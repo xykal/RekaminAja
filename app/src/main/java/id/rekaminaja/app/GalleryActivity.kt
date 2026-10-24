@@ -4,30 +4,28 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
-import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import id.rekaminaja.app.data.GalleryLoader
 import id.rekaminaja.app.data.MediaItem
+import id.rekaminaja.app.ui.RekDialogs
+import id.rekaminaja.app.ui.RekTopBar
 import java.io.File
 import java.util.concurrent.Executors
 
 class GalleryActivity : AppCompatActivity() {
 
     private lateinit var adapter: MediaAdapter
-    private lateinit var emptyView: TextView
+    private lateinit var emptyView: View
     private val executor = Executors.newSingleThreadExecutor()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_gallery)
-        setSupportActionBar(findViewById(R.id.toolbar))
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.title = getString(R.string.gallery)
+        findViewById<RekTopBar>(R.id.topBar).onBackClick = { finish() }
 
         emptyView = findViewById(R.id.emptyView)
         adapter = MediaAdapter(
@@ -42,11 +40,6 @@ class GalleryActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refresh()
-    }
-
-    override fun onSupportNavigateUp(): Boolean {
-        finish()
-        return true
     }
 
     private fun refresh() {
@@ -75,18 +68,14 @@ class GalleryActivity : AppCompatActivity() {
             getString(R.string.delete)
         )
         if (!item.isImage) labels.add(1, getString(R.string.trim_video))
-        AlertDialog.Builder(this)
-            .setTitle(item.name)
-            .setItems(labels.toTypedArray()) { _, which ->
-                val label = labels[which]
-                when (label) {
-                    getString(R.string.play) -> openPlayer(item)
-                    getString(R.string.trim_video) -> openTrim(item)
-                    getString(R.string.share) -> share(item)
-                    getString(R.string.delete) -> confirmDelete(item)
-                }
+        RekDialogs.showOptions(this, item.name, labels) { which ->
+            when (labels[which]) {
+                getString(R.string.play) -> openPlayer(item)
+                getString(R.string.trim_video) -> openTrim(item)
+                getString(R.string.share) -> share(item)
+                getString(R.string.delete) -> confirmDelete(item)
             }
-            .show()
+        }
     }
 
     private fun openTrim(item: MediaItem) {
@@ -121,12 +110,9 @@ class GalleryActivity : AppCompatActivity() {
     }
 
     private fun confirmDelete(item: MediaItem) {
-        AlertDialog.Builder(this)
-            .setTitle(R.string.delete)
-            .setMessage(item.name)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.delete) { _, _ -> delete(item) }
-            .show()
+        RekDialogs.showConfirm(
+            this, getString(R.string.delete), item.name, getString(R.string.delete)
+        ) { delete(item) }
     }
 
     private fun delete(item: MediaItem) {

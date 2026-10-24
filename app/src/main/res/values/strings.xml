@@ -78,7 +78,7 @@
     <string name="usage_access_on">Usage access: ALLOWED</string>
     <string name="usage_access_off">Usage access: NOT allowed yet</string>
     <string name="search_apps">Search apps…</string>
-    <string name="shield_active_text">🔒 Privacy shield active\nRecording is auto-paused</string>
+    <string name="shield_active_text">Privacy shield active\nRecording is auto-paused</string>
 
     <string name="trim_video">Trim video</string>
     <string name="trim_range_format">%1$s → %2$s  (duration %3$s)</string>
@@ -115,7 +115,7 @@
     <string name="battery_section">Battery</string>
     <string name="battery_desc">Some phones kill long recordings in the background. Allow RekaminAja to ignore battery optimization for reliable long recordings.</string>
     <string name="battery_btn">Ignore battery optimization</string>
-    <string name="battery_ok">Battery optimization already ignored ✓</string>
+    <string name="battery_ok">Battery optimization already ignored</string>
     <string name="about_format">RekaminAja %1$s — free &amp; open source. No internet permission, no ads, no tracking. Recordings never leave your phone.</string>
 
     <string name="overlay_warn_text">Floating ball, facecam, censor zones and drawing need the “Display over other apps” permission.</string>
@@ -124,4 +124,29 @@
     <string name="shortcut_record_long">Start screen recording</string>
     <string name="shortcut_shot">Screenshot</string>
     <string name="shortcut_shot_long">Take a screenshot</string>
+
+    <!-- v1.1: UI baru + Audio Lab -->
+    <string name="apps_count_format">%1$d apps</string>
+    <string name="audio_lab">Audio Lab</string>
+    <string name="fx_compressor">Podcast dynamics (compressor)</string>
+    <string name="fx_compressor_desc">Evens out loud and quiet parts and adds gentle presence</string>
+    <string name="fx_fallback">Studio FX is not available on this path. Recording with the standard microphone.</string>
+    <string name="fx_gain">Mic boost</string>
+    <string name="fx_gain_format">+%1$d dB</string>
+    <string name="fx_gate">Noise gate</string>
+    <string name="fx_gate_desc">Cuts background hiss when you are not speaking</string>
+    <string name="fx_intro">Make your voice sound like a podcast mic. Everything is off by default — pick a preset or tune it yourself.</string>
+    <string name="fx_noise_system">System noise reduction</string>
+    <string name="fx_noise_system_desc">Uses your device noise suppressor, echo canceller and auto gain when available</string>
+    <string name="fx_note_route">Applies to Mic and Internal + Mic recordings. When FX is on, the mic runs through the codec path so the audio can be processed; if that path is unavailable, the standard microphone is used automatically.</string>
+    <string name="podcast_fx">Podcast FX</string>
+    <string name="preset_natural">Natural</string>
+    <string name="preset_off">Off</string>
+    <string name="preset_podcast">Podcast</string>
+    <string name="preset_studio">Studio</string>
+    <string name="state_off">Off</string>
+    <string name="state_on">On</string>
+    <string name="tap_to_open">Tap to open</string>
+    <string name="tool_bubble">Floating ball</string>
+    <string name="zones_count_format">%1$d zones</string>
 </resources>

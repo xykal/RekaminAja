@@ -1,8 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.RekaminAja" parent="Theme.Material3.DayNight.NoActionBar" />
+    <!-- Light Clean: tema terang buatan sendiri, tidak mengikuti dynamic color. -->
+    <style name="Theme.RekaminAja" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/brand</item>
+        <item name="colorOnPrimary">@color/on_dark</item>
+        <item name="colorPrimaryContainer">@color/brand_tint</item>
+        <item name="colorOnPrimaryContainer">@color/brand_deep</item>
+        <item name="colorSecondary">@color/accent_slate</item>
+        <item name="colorSurface">@color/bg_surface</item>
+        <item name="colorOnSurface">@color/ink</item>
+        <item name="colorSurfaceVariant">@color/bg_soft</item>
+        <item name="colorOnSurfaceVariant">@color/muted</item>
+        <item name="colorOutline">@color/line</item>
+        <item name="android:colorBackground">@color/bg_app</item>
+        <item name="android:windowBackground">@color/bg_app</item>
+        <item name="android:statusBarColor">@color/bg_app</item>
+        <item name="android:navigationBarColor">@color/bg_app</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
 
-    <style name="Theme.RekaminAja.Translucent" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Theme.RekaminAja.Translucent" parent="Theme.Material3.Light.NoActionBar">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowContentOverlay">@null</item>

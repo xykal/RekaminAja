@@ -5,15 +5,15 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.View
-import android.widget.Button
-import android.widget.MediaController
-import android.widget.ProgressBar
-import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import android.widget.VideoView
 import androidx.appcompat.app.AppCompatActivity
 import id.rekaminaja.app.data.GalleryLoader
+import id.rekaminaja.app.ui.RekPillButton
+import id.rekaminaja.app.ui.RekSlider
+import id.rekaminaja.app.ui.RekSpinner
+import id.rekaminaja.app.ui.RekTopBar
 import id.rekaminaja.app.recorder.OutputStore
 import id.rekaminaja.app.util.Util
 import id.rekaminaja.app.util.VideoTrimmer
@@ -30,10 +30,12 @@ class TrimActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var uri: Uri
     private lateinit var videoView: VideoView
-    private lateinit var seekStart: SeekBar
-    private lateinit var seekEnd: SeekBar
+    private lateinit var seekStart: RekSlider
+    private lateinit var seekEnd: RekSlider
     private lateinit var labelRange: TextView
-    private lateinit var progress: ProgressBar
+    private lateinit var tvStartValue: TextView
+    private lateinit var tvEndValue: TextView
+    private lateinit var progress: RekSpinner
     private var durationMs = 0L
 
     private val endWatcher = object : Runnable {
@@ -46,67 +48,69 @@ class TrimActivity : AppCompatActivity() {
         }
     }
 
-    private fun startMs(): Long = seekStart.progress * 1_000L
-    private fun endMs(): Long = seekEnd.progress * 1_000L
+    private fun startMs(): Long = seekStart.value * 1_000L
+    private fun endMs(): Long = seekEnd.value * 1_000L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_trim)
-        setSupportActionBar(findViewById(R.id.toolbar))
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.title = getString(R.string.trim_video)
+        findViewById<RekTopBar>(R.id.topBar).onBackClick = { finish() }
 
         uri = Uri.parse(intent.getStringExtra(EXTRA_URI) ?: "")
         videoView = findViewById(R.id.trimVideo)
         seekStart = findViewById(R.id.seekStart)
         seekEnd = findViewById(R.id.seekEnd)
         labelRange = findViewById(R.id.labelRange)
+        tvStartValue = findViewById(R.id.tvStartValue)
+        tvEndValue = findViewById(R.id.tvEndValue)
         progress = findViewById(R.id.trimProgress)
 
-        val controller = MediaController(this)
-        controller.setAnchorView(videoView)
-        videoView.setMediaController(controller)
         videoView.setVideoURI(uri)
+        videoView.setOnClickListener {
+            videoView.seekTo(startMs().toInt())
+            videoView.start()
+            handler.removeCallbacks(endWatcher)
+            handler.post(endWatcher)
+        }
 
         executor.execute {
             val dur = GalleryLoader.durationOf(this, uri)
             runOnUiThread {
                 durationMs = dur
                 val totalSec = (dur / 1_000).toInt().coerceAtLeast(1)
-                seekStart.max = totalSec
-                seekEnd.max = totalSec
-                seekStart.progress = 0
-                seekEnd.progress = totalSec
+                seekStart.maxValue = totalSec
+                seekEnd.maxValue = totalSec
+                seekStart.setValueSilently(0)
+                seekEnd.setValueSilently(totalSec)
                 updateLabel()
             }
         }
 
-        val listener = object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (seekEnd.progress <= seekStart.progress) {
-                    if (sb === seekStart) seekEnd.progress = (seekStart.progress + 1)
-                        .coerceAtMost(seekEnd.max)
-                    else seekStart.progress = (seekEnd.progress - 1).coerceAtLeast(0)
-                }
-                updateLabel()
+        seekStart.onValueChange = { _, _ ->
+            if (seekEnd.value <= seekStart.value) {
+                seekEnd.setValueSilently((seekStart.value + 1).coerceAtMost(seekEnd.maxValue))
             }
-
-            override fun onStartTrackingTouch(sb: SeekBar?) = Unit
-            override fun onStopTrackingTouch(sb: SeekBar?) = Unit
+            updateLabel()
         }
-        seekStart.setOnSeekBarChangeListener(listener)
-        seekEnd.setOnSeekBarChangeListener(listener)
+        seekEnd.onValueChange = { _, _ ->
+            if (seekEnd.value <= seekStart.value) {
+                seekStart.setValueSilently((seekEnd.value - 1).coerceAtLeast(0))
+            }
+            updateLabel()
+        }
 
-        findViewById<Button>(R.id.btnPreview).setOnClickListener {
+        findViewById<RekPillButton>(R.id.btnPreview).setOnClickListener {
             videoView.seekTo(startMs().toInt())
             videoView.start()
             handler.removeCallbacks(endWatcher)
             handler.post(endWatcher)
         }
-        findViewById<Button>(R.id.btnSaveTrim).setOnClickListener { save() }
+        findViewById<RekPillButton>(R.id.btnSaveTrim).setOnClickListener { save() }
     }
 
     private fun updateLabel() {
+        tvStartValue.text = Util.formatDuration(startMs())
+        tvEndValue.text = Util.formatDuration(endMs())
         labelRange.text = getString(
             R.string.trim_range_format,
             Util.formatDuration(startMs()),
@@ -145,11 +149,6 @@ class TrimActivity : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    override fun onSupportNavigateUp(): Boolean {
-        finish()
-        return true
     }
 
     override fun onDestroy() {

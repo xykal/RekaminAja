@@ -4,7 +4,6 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
-import com.google.android.material.color.DynamicColors
 import id.rekaminaja.app.data.Prefs
 
 class RekaminApp : Application() {
@@ -12,8 +11,8 @@ class RekaminApp : Application() {
     override fun onCreate() {
         super.onCreate()
         Prefs.init(this)
-        // Material You dynamic color (Android 12+) — aman dipanggil di semua API.
-        DynamicColors.applyToActivitiesIfAvailable(this)
+        // v1.1: tema Light Clean custom — Material You dynamic color dimatikan
+        // agar tampilan konsisten dan tidak terlihat seperti UI bawaan.
         createChannels()
     }
 

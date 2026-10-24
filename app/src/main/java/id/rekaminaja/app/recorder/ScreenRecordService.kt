@@ -193,26 +193,38 @@ class ScreenRecordService : Service() {
 
             val audio = audioOverride ?: Prefs.audioSource
             val wantInternal = audio == Prefs.AUDIO_INTERNAL || audio == Prefs.AUDIO_MIX
+            // Mic dengan efek podcast aktif wajib lewat jalur codec (PCM bisa diproses).
+            val wantMicCodec = audio == Prefs.AUDIO_MIC && Prefs.anyAudioFx
             var eng: RecorderEngine
             var surface: android.view.Surface
-            if (wantInternal && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val internal = InternalAudioEngine(
+            if ((wantInternal && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) || wantMicCodec) {
+                val codecEngine = CodecRecorderEngine(
                     proj, file, capture.width, capture.height, fps, bitrate,
-                    includeMic = audio == Prefs.AUDIO_MIX
+                    includeInternal = wantInternal,
+                    includeMic = audio == Prefs.AUDIO_MIX || audio == Prefs.AUDIO_MIC,
+                    fxNoiseSystem = Prefs.fxNoiseSystem,
+                    dsp = if (Prefs.fxGate || Prefs.fxCompressor) {
+                        MicDsp(44_100, Prefs.fxGate, Prefs.fxCompressor, Prefs.fxGainDb)
+                    } else {
+                        null
+                    }
                 )
                 try {
-                    surface = internal.start()
-                    eng = internal
+                    surface = codecEngine.start()
+                    eng = codecEngine
                 } catch (e: Exception) {
                     // Fallback aman: engine MediaRecorder.
                     try {
-                        internal.stop()
+                        codecEngine.stop()
                     } catch (ignored: Exception) {
                     }
-                    toast(R.string.internal_audio_fallback)
+                    toast(
+                        if (wantInternal) R.string.internal_audio_fallback
+                        else R.string.fx_fallback
+                    )
                     val fallback = MediaRecorderEngine(
                         this, file, capture.width, capture.height, fps, bitrate,
-                        useMic = audio == Prefs.AUDIO_MIX
+                        useMic = audio == Prefs.AUDIO_MIX || audio == Prefs.AUDIO_MIC
                     )
                     surface = fallback.start()
                     eng = fallback
@@ -476,11 +488,9 @@ class ScreenRecordService : Service() {
             Intent(this, ScreenRecordService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val pauseLabel = if (state == RecorderState.State.PAUSED) {
-            getString(R.string.resume)
-        } else {
-            getString(R.string.pause)
-        }
+        val pausedNow = state == RecorderState.State.PAUSED
+        val pauseLabel = if (pausedNow) getString(R.string.resume) else getString(R.string.pause)
+        val pauseIcon = if (pausedNow) R.drawable.ic_notif_play else R.drawable.ic_notif_pause
         return NotificationCompat.Builder(this, RekaminApp.CHANNEL_RECORDING)
             .setSmallIcon(R.drawable.ic_record)
             .setContentTitle(title)
@@ -489,8 +499,8 @@ class ScreenRecordService : Service() {
             .setOnlyAlertOnce(true)
             .setContentIntent(openApp)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
-            .addAction(android.R.drawable.ic_media_pause, pauseLabel, pauseIntent)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, getString(R.string.stop), stopIntent)
+            .addAction(pauseIcon, pauseLabel, pauseIntent)
+            .addAction(R.drawable.ic_notif_stop, getString(R.string.stop), stopIntent)
             .build()
     }
 

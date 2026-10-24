@@ -1,17 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bg_app"
+    android:fitsSystemWindows="true"
     android:orientation="vertical">
 
-    <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/toolbar"
+    <id.rekaminaja.app.ui.RekTopBar
+        android:id="@+id/topBar"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize" />
+        android:layout_height="wrap_content" />
 
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
         android:layout_weight="1"
         android:background="#000000">
 
@@ -30,36 +35,91 @@
             android:visibility="gone" />
     </FrameLayout>
 
+    <!-- Kontrol putar custom -->
+    <LinearLayout
+        android:id="@+id/playerControls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/bg_card"
+        android:elevation="1dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="8dp">
+
+        <id.rekaminaja.app.ui.RekPillButton
+            android:id="@+id/btnPlayPause"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:rekIcon="@drawable/ic_play"
+            app:rekText="@string/play"
+            app:rekVariant="primary" />
+
+        <TextView
+            android:id="@+id/tvTimeCurrent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="00:00"
+            android:textColor="@color/ink"
+            android:textSize="12sp" />
+
+        <id.rekaminaja.app.ui.RekSlider
+            android:id="@+id/seekProgress"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/tvTimeTotal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="00:00"
+            android:textColor="@color/muted"
+            android:textSize="12sp" />
+    </LinearLayout>
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="12dp">
+        android:padding="16dp">
 
-        <com.google.android.material.button.MaterialButton
+        <id.rekaminaja.app.ui.RekPillButton
             android:id="@+id/btnTrim"
-            style="?attr/materialButtonOutlinedStyle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/trim_video" />
+            app:rekIcon="@drawable/ic_cut"
+            app:rekText="@string/trim_video"
+            app:rekVariant="outline" />
 
-        <com.google.android.material.button.MaterialButton
+        <id.rekaminaja.app.ui.RekPillButton
             android:id="@+id/btnShare"
-            style="?attr/materialButtonOutlinedStyle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="10dp"
             android:layout_weight="1"
-            android:text="@string/share" />
+            app:rekIcon="@drawable/ic_share"
+            app:rekText="@string/share"
+            app:rekVariant="outline" />
 
-        <com.google.android.material.button.MaterialButton
+        <id.rekaminaja.app.ui.RekPillButton
             android:id="@+id/btnDelete"
-            style="?attr/materialButtonOutlinedStyle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="10dp"
             android:layout_weight="1"
-            android:text="@string/delete" />
+            app:rekIcon="@drawable/ic_trash"
+            app:rekText="@string/delete"
+            app:rekVariant="dangerSoft" />
     </LinearLayout>
 </LinearLayout>

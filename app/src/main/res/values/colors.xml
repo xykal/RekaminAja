@@ -1,7 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- RekaminAja Light Clean design system -->
     <color name="ic_launcher_background">#B3261E</color>
-    <color name="bubble_idle">#455A64</color>
-    <color name="bubble_recording">#D32F2F</color>
-    <color name="bubble_paused">#EF6C00</color>
+
+    <color name="bg_app">#F7F7F5</color>
+    <color name="bg_surface">#FFFFFF</color>
+    <color name="bg_soft">#F0F0F2</color>
+    <color name="bg_soft_pressed">#E4E4E8</color>
+    <color name="line">#E6E6EA</color>
+
+    <color name="ink">#17181C</color>
+    <color name="ink_soft">#3C3F46</color>
+    <color name="muted">#71727A</color>
+    <color name="faint">#A4A5AC</color>
+
+    <color name="brand">#E5484D</color>
+    <color name="brand_deep">#C9363B</color>
+    <color name="brand_tint">#FFF0F0</color>
+    <color name="brand_tint_line">#FAD9DB</color>
+
+    <color name="accent_blue">#2F6FED</color>
+    <color name="accent_blue_tint">#EBF1FE</color>
+    <color name="accent_violet">#7C4DEF</color>
+    <color name="accent_violet_tint">#F1EBFE</color>
+    <color name="accent_green">#1F9D66</color>
+    <color name="accent_green_tint">#E8F6F0</color>
+    <color name="accent_amber">#D97E06</color>
+    <color name="accent_amber_tint">#FDF2E4</color>
+    <color name="accent_slate">#56616E</color>
+    <color name="accent_slate_tint">#EDF0F2</color>
+
+    <color name="dark_bar">#17181C</color>
+    <color name="on_dark">#FFFFFF</color>
+
+    <color name="bubble_idle">#FFFFFF</color>
+    <color name="bubble_recording">#E5484D</color>
+    <color name="bubble_paused">#E8930C</color>
 </resources>

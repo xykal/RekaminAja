@@ -10,6 +10,10 @@ import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.media.MediaRecorder
+import android.media.audiofx.AcousticEchoCanceler
+import android.media.audiofx.AudioEffect
+import android.media.audiofx.AutomaticGainControl
+import android.media.audiofx.NoiseSuppressor
 import android.media.projection.MediaProjection
 import android.os.Build
 import android.view.Surface
@@ -20,22 +24,26 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Engine audio internal (Android 10+): Video H.264 via MediaCodec (surface input),
- * audio via AudioPlaybackCapture -> encoder AAC -> MediaMuxer.
- * Mode Mix menggabungkan audio internal + mikrofon di level PCM.
+ * Engine codec RekaminAja: Video H.264 via MediaCodec (surface input), audio AAC
+ * via MediaCodec + MediaMuxer. Dipakai untuk:
+ * - Audio internal (Android 10+, AudioPlaybackCapture)
+ * - Internal + mic (mix PCM)
+ * - Mic saja saat efek podcast aktif (efek sistem NS/AEC/AGC + DSP [MicDsp])
  *
- * Catatan: aplikasi yang mengatur kebijakan capture "tidak boleh direkam"
- * (mis. sebagian app streaming musik) akan menghasilkan audio kosong — itu aturan Android.
+ * Catatan: aplikasi yang melarang perekaman audionya (kebijakan capture Android)
+ * akan menghasilkan audio internal kosong. Itu aturan platform.
  */
-@RequiresApi(Build.VERSION_CODES.Q)
-class InternalAudioEngine(
-    private val projection: MediaProjection,
+class CodecRecorderEngine(
+    private val projection: MediaProjection?,
     override val outputFile: File,
     private val width: Int,
     private val height: Int,
     private val fps: Int,
     private val bitrate: Int,
-    private val includeMic: Boolean
+    private val includeInternal: Boolean,
+    private val includeMic: Boolean,
+    private val fxNoiseSystem: Boolean = false,
+    private val dsp: MicDsp? = null
 ) : RecorderEngine {
 
     // Jeda diimplementasikan best-effort (frame/sampel saat jeda dibuang + timestamp digeser).
@@ -50,6 +58,7 @@ class InternalAudioEngine(
     private var inputSurface: Surface? = null
     private var internalRecord: AudioRecord? = null
     private var micRecord: AudioRecord? = null
+    private val micEffects = mutableListOf<AudioEffect>()
 
     @Volatile private var feeding = false
     @Volatile private var muxing = false
@@ -115,8 +124,12 @@ class InternalAudioEngine(
         muxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
 
         // --- Sumber audio ---
-        internalRecord = createInternalRecord()
+        if (includeInternal) {
+            check(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) { "Audio internal perlu Android 10+" }
+            internalRecord = createInternalRecord()
+        }
         if (includeMic) micRecord = createMicRecord()
+        check(internalRecord != null || micRecord != null) { "Tidak ada sumber audio" }
 
         feeding = true
         muxing = true
@@ -125,9 +138,12 @@ class InternalAudioEngine(
         return inputSurface!!
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     @SuppressLint("MissingPermission")
     private fun createInternalRecord(): AudioRecord {
-        val config = AudioPlaybackCaptureConfiguration.Builder(projection)
+        val config = AudioPlaybackCaptureConfiguration.Builder(
+            requireNotNull(projection) { "MediaProjection wajib untuk audio internal" }
+        )
             .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
             .addMatchingUsage(AudioAttributes.USAGE_GAME)
             .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
@@ -150,7 +166,42 @@ class InternalAudioEngine(
             .setBufferSizeInBytes(bufferSize())
             .build()
         check(record.state == AudioRecord.STATE_INITIALIZED) { "AudioRecord mic gagal dibuat" }
+        if (fxNoiseSystem) attachSystemEffects(record.audioSessionId)
         return record
+    }
+
+    /**
+     * Efek bawaan platform untuk suara gaya podcast. Semua best-effort:
+     * perangkat tanpa dukungan efek akan tetap merekam tanpa efek.
+     */
+    private fun attachSystemEffects(sessionId: Int) {
+        try {
+            if (NoiseSuppressor.isAvailable()) {
+                NoiseSuppressor.create(sessionId)?.let {
+                    it.enabled = true
+                    micEffects.add(it)
+                }
+            }
+        } catch (e: Exception) {
+        }
+        try {
+            if (AcousticEchoCanceler.isAvailable()) {
+                AcousticEchoCanceler.create(sessionId)?.let {
+                    it.enabled = true
+                    micEffects.add(it)
+                }
+            }
+        } catch (e: Exception) {
+        }
+        try {
+            if (AutomaticGainControl.isAvailable()) {
+                AutomaticGainControl.create(sessionId)?.let {
+                    it.enabled = true
+                    micEffects.add(it)
+                }
+            }
+        } catch (e: Exception) {
+        }
     }
 
     private fun pcmFormat(): AudioFormat = AudioFormat.Builder()
@@ -206,6 +257,13 @@ class InternalAudioEngine(
     }
 
     private fun releaseAll() {
+        for (fx in micEffects) {
+            try {
+                fx.release()
+            } catch (e: Exception) {
+            }
+        }
+        micEffects.clear()
         try {
             internalRecord?.stop()
         } catch (e: Exception) {
@@ -241,12 +299,17 @@ class InternalAudioEngine(
     // ---------------------------------------------------------------- audio feed
 
     private fun audioFeedLoop() {
-        val internal = internalRecord ?: return
+        val internal = internalRecord
         val mic = micRecord
+        if (internal == null && mic == null) {
+            audioEos = true
+            return
+        }
         try {
-            internal.startRecording()
+            internal?.startRecording()
             mic?.startRecording()
         } catch (e: Exception) {
+            audioEos = true
             return
         }
         val chunkBytes = 8_192 // 2048 frame stereo 16-bit
@@ -256,27 +319,47 @@ class InternalAudioEngine(
         var lastFedPts = -1L
         val codec = audioCodec ?: return
         while (feeding) {
-            val n = try {
-                internal.read(bufInternal, 0, bufInternal.size, AudioRecord.READ_BLOCKING)
-            } catch (e: Exception) {
-                break
-            }
-            if (n <= 0) continue
-            var out = bufInternal
-            if (mic != null) {
-                val nMic = try {
-                    mic.read(bufMic, 0, n, AudioRecord.READ_BLOCKING)
+            var out: ByteArray
+            var outLen: Int
+            if (internal != null) {
+                val n = try {
+                    internal.read(bufInternal, 0, bufInternal.size, AudioRecord.READ_BLOCKING)
                 } catch (e: Exception) {
-                    0
+                    break
                 }
-                if (nMic > 0) out = mixPcm(bufInternal, bufMic, min(n, nMic))
+                if (n <= 0) continue
+                out = bufInternal
+                outLen = n
+                if (mic != null) {
+                    val nMic = try {
+                        mic.read(bufMic, 0, n, AudioRecord.READ_BLOCKING)
+                    } catch (e: Exception) {
+                        0
+                    }
+                    if (nMic > 0) {
+                        // DSP podcast hanya menyentuh jalur mic, bukan audio internal.
+                        dsp?.process(bufMic, nMic, channelCount)
+                        outLen = min(n, nMic)
+                        out = mixPcm(bufInternal, bufMic, outLen)
+                    }
+                }
+            } else {
+                val n = try {
+                    mic!!.read(bufMic, 0, bufMic.size, AudioRecord.READ_BLOCKING)
+                } catch (e: Exception) {
+                    break
+                }
+                if (n <= 0) continue
+                dsp?.process(bufMic, n, channelCount)
+                out = bufMic
+                outLen = n
             }
             val frameBase = totalFrames
-            totalFrames += (n / 4).toLong()
+            totalFrames += (outLen / 4).toLong()
             if (paused) continue // sampel saat jeda dibuang, timeline tetap dihitung
 
             var offset = 0
-            while (offset < n && feeding) {
+            while (offset < outLen && feeding) {
                 val idx = try {
                     codec.dequeueInputBuffer(10_000)
                 } catch (e: Exception) {
@@ -284,7 +367,7 @@ class InternalAudioEngine(
                 }
                 if (idx < 0) break
                 val input = codec.getInputBuffer(idx) ?: break
-                val len = min(input.capacity(), n - offset)
+                val len = min(input.capacity(), outLen - offset)
                 input.clear()
                 input.put(out, offset, len)
                 val segFrames = frameBase + (offset / 4)

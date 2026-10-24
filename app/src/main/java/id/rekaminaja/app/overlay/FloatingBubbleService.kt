@@ -85,20 +85,25 @@ class FloatingBubbleService : Service() {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setColor(ContextCompat.getColor(this@FloatingBubbleService, R.color.bubble_idle))
+                setStroke(
+                    Util.dp(this@FloatingBubbleService, 1),
+                    ContextCompat.getColor(this@FloatingBubbleService, R.color.line)
+                )
             }
+            elevation = Util.dp(this@FloatingBubbleService, 4).toFloat()
             val pad = Util.dp(this@FloatingBubbleService, 6)
             setPadding(pad, pad, pad, pad)
         }
         bubbleIcon = ImageView(this).apply {
             setImageResource(R.drawable.ic_record)
-            setColorFilter(Color.WHITE)
+            setColorFilter(ContextCompat.getColor(this@FloatingBubbleService, R.color.brand))
         }
         root.addView(
             bubbleIcon,
             LinearLayout.LayoutParams(Util.dp(this, 26), Util.dp(this, 26))
         )
         bubbleTimer = TextView(this).apply {
-            setTextColor(Color.WHITE)
+            setTextColor(ContextCompat.getColor(this@FloatingBubbleService, R.color.ink))
             textSize = 9f
             gravity = Gravity.CENTER
             visibility = View.GONE
@@ -163,6 +168,8 @@ class FloatingBubbleService : Service() {
                 (b.background as? GradientDrawable)?.setColor(
                     ContextCompat.getColor(this, R.color.bubble_recording)
                 )
+                bubbleIcon?.setColorFilter(Color.WHITE)
+                bubbleTimer?.setTextColor(Color.WHITE)
                 bubbleTimer?.visibility = View.VISIBLE
                 bubbleTimer?.text = Util.formatDuration(RecorderState.elapsedMs())
             }
@@ -170,6 +177,8 @@ class FloatingBubbleService : Service() {
                 (b.background as? GradientDrawable)?.setColor(
                     ContextCompat.getColor(this, R.color.bubble_paused)
                 )
+                bubbleIcon?.setColorFilter(Color.WHITE)
+                bubbleTimer?.setTextColor(Color.WHITE)
                 bubbleTimer?.visibility = View.VISIBLE
                 bubbleTimer?.text = Util.formatDuration(RecorderState.elapsedMs())
             }
@@ -177,6 +186,8 @@ class FloatingBubbleService : Service() {
                 (b.background as? GradientDrawable)?.setColor(
                     ContextCompat.getColor(this, R.color.bubble_idle)
                 )
+                bubbleIcon?.setColorFilter(ContextCompat.getColor(this, R.color.brand))
+                bubbleTimer?.setTextColor(ContextCompat.getColor(this, R.color.ink))
                 bubbleTimer?.visibility = View.GONE
             }
         }
@@ -200,9 +211,14 @@ class FloatingBubbleService : Service() {
             val pad = Util.dp(this@FloatingBubbleService, 14)
             setPadding(pad, pad, pad, pad)
             background = GradientDrawable().apply {
-                cornerRadius = Util.dp(this@FloatingBubbleService, 18).toFloat()
-                setColor(Color.argb(242, 30, 30, 34))
+                cornerRadius = Util.dp(this@FloatingBubbleService, 22).toFloat()
+                setColor(Color.argb(250, 255, 255, 255))
+                setStroke(
+                    Util.dp(this@FloatingBubbleService, 1),
+                    ContextCompat.getColor(this@FloatingBubbleService, R.color.line)
+                )
             }
+            elevation = Util.dp(this@FloatingBubbleService, 6).toFloat()
         }
         val title = TextView(this).apply {
             text = if (RecorderState.isRecording) {
@@ -210,7 +226,8 @@ class FloatingBubbleService : Service() {
             } else {
                 getString(R.string.app_name)
             }
-            setTextColor(Color.WHITE)
+            setTextColor(ContextCompat.getColor(this@FloatingBubbleService, R.color.ink))
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
             textSize = 15f
             setPadding(0, 0, 0, Util.dp(this@FloatingBubbleService, 8))
         }
@@ -220,6 +237,22 @@ class FloatingBubbleService : Service() {
             val b = Button(this).apply {
                 text = label
                 isAllCaps = false
+                minHeight = 0
+                minWidth = 0
+                textSize = 13.5f
+                typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+                setTextColor(ContextCompat.getColor(this@FloatingBubbleService, R.color.ink))
+                val px = Util.dp(this@FloatingBubbleService, 16)
+                val py = Util.dp(this@FloatingBubbleService, 10)
+                setPadding(px, py, px, py)
+                background = GradientDrawable().apply {
+                    cornerRadius = Util.dp(this@FloatingBubbleService, 999).toFloat()
+                    setColor(ContextCompat.getColor(this@FloatingBubbleService, R.color.bg_soft))
+                    setStroke(
+                        Util.dp(this@FloatingBubbleService, 1),
+                        ContextCompat.getColor(this@FloatingBubbleService, R.color.line)
+                    )
+                }
                 setOnClickListener {
                     closePanel()
                     action()
@@ -230,7 +263,7 @@ class FloatingBubbleService : Service() {
                 LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
-                )
+                ).apply { bottomMargin = Util.dp(this@FloatingBubbleService, 7) }
             )
         }
 

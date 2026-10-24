@@ -21,9 +21,9 @@ Push biasa ke `main` menjalankan workflow [`CI`](../.github/workflows/ci.yml)
 
 ## 2. Keystore produksi (WAJIB sebelum distribusi publik)
 
-> ⚠️ **Sekali aplikasi terinstall user dengan satu keystore, semua update selamanya
-> harus memakai keystore yang sama.** Hilang keystore = tidak bisa update aplikasi.
-> Simpan backup terenkripsi di minimal 2 tempat terpisah.
+> **Penting:** sekali aplikasi terinstall user dengan satu keystore, semua update
+> selamanya harus memakai keystore yang sama. Hilang keystore berarti aplikasi tidak
+> bisa diupdate. Simpan backup terenkripsi di minimal 2 tempat terpisah.
 
 Buat keystore (sekali saja, di mesin lokal yang aman):
 
@@ -70,13 +70,14 @@ rilisan awal sebelum Google Play ($25 sekali bayar).
 - [ ] Tag `vX.Y.Z` dipush → GitHub Release hijau → unduh APK dari Release
 - [ ] Uji APK Release di perangkat beneran:
   - [ ] Rekam mode mic / internal / internal+mic / senyap
+  - [ ] Audio Lab: preset Off/Natural/Podcast/Studio di mode mic dan internal+mic; bandingkan kebisingan latar dan kejernihan suara
   - [ ] Pause/resume, rotasi layar saat merekam, rekaman > 10 menit
   - [ ] Bola melayang, facecam, zona sensor, auto-pause app sensitif
   - [ ] Screenshot, galeri, trim, share
   - [ ] Android 14+ (dialog "satu app vs seluruh layar") & Android lama (7–9) bila ada
 - [ ] Siapkan aset listing:
   - Ikon 512×512 PNG (ekspor dari `ic_launcher_foreground` + latar `#B3261E`)
-  - Screenshot minimal 3 (portrait) — rekam/test dengan RekaminAja sendiri 😉
+  - Screenshot minimal 3 (portrait), bisa diambil dengan RekaminAja sendiri
   - Deskripsi singkat & lengkap (ambil dari README), kategori: Video Players & Editors / Tools
   - URL Privacy Policy: pakai tautan `PRIVACY_POLICY.md` di repo GitHub
 - [ ] Upload APK Release yang sama persis dari GitHub Release (jangan rebuild lokal)

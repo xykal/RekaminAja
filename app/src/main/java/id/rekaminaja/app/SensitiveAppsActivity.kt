@@ -10,8 +10,6 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
@@ -19,6 +17,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import id.rekaminaja.app.data.Prefs
+import id.rekaminaja.app.ui.RekPillButton
+import id.rekaminaja.app.ui.RekToggle
+import id.rekaminaja.app.ui.RekTopBar
 import id.rekaminaja.app.util.Util
 import java.util.concurrent.Executors
 
@@ -39,12 +40,10 @@ class SensitiveAppsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_sensitive_apps)
-        setSupportActionBar(findViewById(R.id.toolbar))
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.title = getString(R.string.sensitive_apps)
+        findViewById<RekTopBar>(R.id.topBar).onBackClick = { finish() }
 
         usageStatus = findViewById(R.id.usageStatus)
-        findViewById<Button>(R.id.btnUsageAccess).setOnClickListener {
+        findViewById<RekPillButton>(R.id.btnUsageAccess).setOnClickListener {
             try {
                 startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
             } catch (e: Exception) {
@@ -82,11 +81,6 @@ class SensitiveAppsActivity : AppCompatActivity() {
         usageStatus.text = getString(
             if (Util.hasUsageAccess(this)) R.string.usage_access_on else R.string.usage_access_off
         )
-    }
-
-    override fun onSupportNavigateUp(): Boolean {
-        finish()
-        return true
     }
 
     private fun filter(q: String) {
@@ -143,9 +137,9 @@ class SensitiveAppsActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 holder.icon.setImageResource(R.drawable.ic_gallery)
             }
-            holder.check.setOnCheckedChangeListener(null)
-            holder.check.isChecked = Prefs.sensitivePackages.contains(app.pkg)
-            holder.check.setOnCheckedChangeListener { _, checked ->
+            holder.check.onCheckedChange = null
+            holder.check.setCheckedSilently(Prefs.sensitivePackages.contains(app.pkg))
+            holder.check.onCheckedChange = { checked ->
                 val set = Prefs.sensitivePackages.toMutableSet()
                 if (checked) set.add(app.pkg) else set.remove(app.pkg)
                 Prefs.sensitivePackages = set
@@ -157,7 +151,7 @@ class SensitiveAppsActivity : AppCompatActivity() {
             val icon: ImageView = view.findViewById(R.id.appIcon)
             val label: TextView = view.findViewById(R.id.appLabel)
             val pkg: TextView = view.findViewById(R.id.appPkg)
-            val check: CheckBox = view.findViewById(R.id.appCheck)
+            val check: RekToggle = view.findViewById(R.id.appCheck)
         }
     }
 

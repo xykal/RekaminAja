@@ -7,12 +7,14 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
-import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import id.rekaminaja.app.data.CensorZone
+import id.rekaminaja.app.ui.RekPillButton
+import id.rekaminaja.app.ui.RekTopBar
 import id.rekaminaja.app.data.Prefs
 import id.rekaminaja.app.util.Util
 import kotlin.math.roundToInt
@@ -31,22 +33,20 @@ class CensorEditorActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_censor_editor)
-        setSupportActionBar(findViewById(R.id.toolbar))
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.title = getString(R.string.censor_zones)
+        findViewById<RekTopBar>(R.id.topBar).onBackClick = { finish() }
 
         preview = findViewById(R.id.previewArea)
-        findViewById<Button>(R.id.btnAddZone).setOnClickListener {
+        findViewById<RekPillButton>(R.id.btnAddZone).setOnClickListener {
             addZoneView(CensorZone(0.2f, 0.4f, 0.8f, 0.52f), select = true)
         }
-        findViewById<Button>(R.id.btnDeleteZone).setOnClickListener {
+        findViewById<RekPillButton>(R.id.btnDeleteZone).setOnClickListener {
             selected?.let {
                 preview.removeView(it)
                 zoneViews.remove(it)
                 selected = null
             } ?: Toast.makeText(this, R.string.select_zone_first, Toast.LENGTH_SHORT).show()
         }
-        findViewById<Button>(R.id.btnSaveZones).setOnClickListener {
+        findViewById<RekPillButton>(R.id.btnSaveZones).setOnClickListener {
             save()
             Toast.makeText(this, R.string.zones_saved, Toast.LENGTH_SHORT).show()
             finish()
@@ -58,18 +58,14 @@ class CensorEditorActivity : AppCompatActivity() {
         }
     }
 
-    override fun onSupportNavigateUp(): Boolean {
-        finish()
-        return true
-    }
-
     private fun zoneBackground(isSelected: Boolean): GradientDrawable =
         GradientDrawable().apply {
             setColor(Color.argb(215, 0, 0, 0))
             cornerRadius = Util.dp(this@CensorEditorActivity, 6).toFloat()
             setStroke(
                 Util.dp(this@CensorEditorActivity, if (isSelected) 3 else 1),
-                if (isSelected) Color.RED else Color.WHITE
+                if (isSelected) ContextCompat.getColor(this@CensorEditorActivity, R.color.brand)
+                else Color.WHITE
             )
         }
 

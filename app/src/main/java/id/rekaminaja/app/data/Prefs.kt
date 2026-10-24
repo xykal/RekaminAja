@@ -42,6 +42,31 @@ object Prefs {
         get() = sp.getString("audio", AUDIO_MIC) ?: AUDIO_MIC
         set(v) = sp.edit().putString("audio", v).apply()
 
+    // ---- Efek mic gaya podcast (semua opt-in, default mati = suara mentah) ----
+
+    /** Efek sistem: NoiseSuppressor + AcousticEchoCanceler + AutomaticGainControl. */
+    var fxNoiseSystem: Boolean
+        get() = sp.getBoolean("fx_ns", false)
+        set(v) = sp.edit().putBoolean("fx_ns", v).apply()
+
+    /** Noise gate DSP sendiri: keheningan benar-benar hening. */
+    var fxGate: Boolean
+        get() = sp.getBoolean("fx_gate", false)
+        set(v) = sp.edit().putBoolean("fx_gate", v).apply()
+
+    /** Kompresor + limiter DSP sendiri: suara rata dan padat. */
+    var fxCompressor: Boolean
+        get() = sp.getBoolean("fx_comp", false)
+        set(v) = sp.edit().putBoolean("fx_comp", v).apply()
+
+    /** Makeup gain kompresor dalam dB (0..12). */
+    var fxGainDb: Int
+        get() = sp.getInt("fx_gain", 3)
+        set(v) = sp.edit().putInt("fx_gain", v.coerceIn(0, 12)).apply()
+
+    val anyAudioFx: Boolean
+        get() = fxNoiseSystem || fxGate || fxCompressor
+
     var countdownSec: Int
         get() = sp.getInt("countdown", 3)
         set(v) = sp.edit().putInt("countdown", v).apply()

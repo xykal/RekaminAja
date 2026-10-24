@@ -78,7 +78,7 @@
     <string name="usage_access_on">Akses penggunaan: DIIZINKAN</string>
     <string name="usage_access_off">Akses penggunaan: BELUM diizinkan</string>
     <string name="search_apps">Cari aplikasi…</string>
-    <string name="shield_active_text">🔒 Pelindung privasi aktif\nRekaman dijeda otomatis</string>
+    <string name="shield_active_text">Pelindung privasi aktif\nRekaman dijeda otomatis</string>
 
     <string name="trim_video">Potong video</string>
     <string name="trim_range_format">%1$s → %2$s  (durasi %3$s)</string>
@@ -115,7 +115,7 @@
     <string name="battery_section">Baterai</string>
     <string name="battery_desc">Sebagian HP mematikan rekaman panjang di latar belakang. Izinkan RekaminAja mengabaikan optimasi baterai agar rekaman panjang tetap aman.</string>
     <string name="battery_btn">Abaikan optimasi baterai</string>
-    <string name="battery_ok">Optimasi baterai sudah diabaikan ✓</string>
+    <string name="battery_ok">Optimasi baterai sudah diabaikan</string>
     <string name="about_format">RekaminAja %1$s — gratis &amp; sumber terbuka. Tanpa izin internet, tanpa iklan, tanpa pelacakan. Rekaman tidak pernah meninggalkan HP kamu.</string>
 
     <string name="overlay_warn_text">Bola melayang, facecam, zona sensor, dan gambar di layar membutuhkan izin “Tampil di atas aplikasi lain”.</string>
@@ -124,4 +124,29 @@
     <string name="shortcut_record_long">Mulai merekam layar</string>
     <string name="shortcut_shot">Screenshot</string>
     <string name="shortcut_shot_long">Ambil screenshot</string>
+
+    <!-- v1.1: UI baru + Audio Lab -->
+    <string name="apps_count_format">%1$d aplikasi</string>
+    <string name="audio_lab">Audio Lab</string>
+    <string name="fx_compressor">Dinamika podcast (kompresor)</string>
+    <string name="fx_compressor_desc">Meratakan bagian keras dan pelan dan menambah kehadiran suara secara halus</string>
+    <string name="fx_fallback">Efek studio tidak tersedia di jalur ini. Merekam dengan mikrofon standar.</string>
+    <string name="fx_gain">Penguat mikrofon</string>
+    <string name="fx_gain_format">+%1$d dB</string>
+    <string name="fx_gate">Noise gate</string>
+    <string name="fx_gate_desc">Memotong desis latar saat kamu tidak berbicara</string>
+    <string name="fx_intro">Buat suaramu terdengar seperti mikrofon podcast. Semua mati secara default — pilih preset atau atur sendiri.</string>
+    <string name="fx_noise_system">Reduksi noise sistem</string>
+    <string name="fx_noise_system_desc">Memakai peredam noise, penghilang gema, dan penguat otomatis perangkatmu bila tersedia</string>
+    <string name="fx_note_route">Berlaku untuk rekaman Mikrofon dan Internal + Mikrofon. Saat efek menyala, mikrofon melewati jalur codec agar suaranya bisa diproses; bila jalur itu tidak tersedia, mikrofon standar otomatis dipakai.</string>
+    <string name="podcast_fx">Efek Podcast</string>
+    <string name="preset_natural">Natural</string>
+    <string name="preset_off">Mati</string>
+    <string name="preset_podcast">Podcast</string>
+    <string name="preset_studio">Studio</string>
+    <string name="state_off">Mati</string>
+    <string name="state_on">Nyala</string>
+    <string name="tap_to_open">Ketuk untuk buka</string>
+    <string name="tool_bubble">Bola melayang</string>
+    <string name="zones_count_format">%1$d zona</string>
 </resources>

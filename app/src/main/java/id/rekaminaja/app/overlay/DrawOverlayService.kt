@@ -16,6 +16,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.LinearLayout
+import androidx.core.content.ContextCompat
 import id.rekaminaja.app.R
 import id.rekaminaja.app.util.Util
 
@@ -63,17 +64,44 @@ class DrawOverlayService : Service() {
             val pad = Util.dp(this@DrawOverlayService, 8)
             setPadding(pad, pad, pad, pad)
             background = GradientDrawable().apply {
-                cornerRadius = Util.dp(this@DrawOverlayService, 22).toFloat()
-                setColor(Color.argb(235, 28, 28, 32))
+                cornerRadius = Util.dp(this@DrawOverlayService, 999).toFloat()
+                setColor(Color.argb(248, 255, 255, 255))
+                setStroke(
+                    Util.dp(this@DrawOverlayService, 1),
+                    ContextCompat.getColor(this@DrawOverlayService, R.color.line)
+                )
             }
+            elevation = Util.dp(this@DrawOverlayService, 5).toFloat()
         }
         fun btn(labelRes: Int, action: () -> Unit) {
             val b = Button(this).apply {
                 setText(labelRes)
                 isAllCaps = false
+                minHeight = 0
+                minWidth = 0
+                textSize = 12.5f
+                typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+                setTextColor(ContextCompat.getColor(this@DrawOverlayService, R.color.ink))
+                val px = Util.dp(this@DrawOverlayService, 13)
+                val py = Util.dp(this@DrawOverlayService, 8)
+                setPadding(px, py, px, py)
+                background = GradientDrawable().apply {
+                    cornerRadius = Util.dp(this@DrawOverlayService, 999).toFloat()
+                    setColor(ContextCompat.getColor(this@DrawOverlayService, R.color.bg_soft))
+                    setStroke(
+                        Util.dp(this@DrawOverlayService, 1),
+                        ContextCompat.getColor(this@DrawOverlayService, R.color.line)
+                    )
+                }
                 setOnClickListener { action() }
             }
-            bar.addView(b)
+            bar.addView(
+                b,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { marginEnd = Util.dp(this@DrawOverlayService, 6) }
+            )
         }
         btn(R.string.draw_color) { drawing.cycleColor() }
         btn(R.string.draw_undo) { drawing.undo() }

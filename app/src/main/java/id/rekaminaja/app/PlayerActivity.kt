@@ -4,44 +4,82 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
-import android.widget.Button
 import android.widget.ImageView
-import android.widget.MediaController
+import android.widget.TextView
 import android.widget.Toast
 import android.widget.VideoView
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
+import id.rekaminaja.app.ui.RekDialogs
+import id.rekaminaja.app.ui.RekPillButton
+import id.rekaminaja.app.ui.RekSlider
+import id.rekaminaja.app.ui.RekTopBar
+import id.rekaminaja.app.util.Util
 import java.io.File
 import java.util.concurrent.Executors
 
 class PlayerActivity : AppCompatActivity() {
 
     private val executor = Executors.newSingleThreadExecutor()
+    private val handler = Handler(Looper.getMainLooper())
     private lateinit var uri: Uri
     private var isImage = false
     private var name: String = ""
 
+    private lateinit var videoView: VideoView
+    private lateinit var btnPlayPause: RekPillButton
+    private lateinit var seekProgress: RekSlider
+    private lateinit var tvTimeCurrent: TextView
+    private lateinit var tvTimeTotal: TextView
+    private var userSeeking = false
+
+    private val ticker = object : Runnable {
+        override fun run() {
+            if (!isImage) {
+                try {
+                    if (!userSeeking) {
+                        seekProgress.setValueSilently(videoView.currentPosition / 1000)
+                    }
+                    tvTimeCurrent.text = Util.formatDuration(
+                        videoView.currentPosition.toLong()
+                    )
+                    updatePlayButton()
+                } catch (e: Exception) {
+                }
+                handler.postDelayed(this, 400)
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_player)
-        setSupportActionBar(findViewById(R.id.toolbar))
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         uri = Uri.parse(intent.getStringExtra(EXTRA_URI) ?: "")
         isImage = intent.getBooleanExtra(EXTRA_IS_IMAGE, false)
         name = intent.getStringExtra(EXTRA_NAME) ?: ""
-        supportActionBar?.title = name
 
-        val videoView = findViewById<VideoView>(R.id.videoView)
+        val topBar = findViewById<RekTopBar>(R.id.topBar)
+        topBar.setTitleText(name)
+        topBar.onBackClick = { finish() }
+
+        videoView = findViewById(R.id.videoView)
         val imageView = findViewById<ImageView>(R.id.imageView)
-        val btnTrim = findViewById<Button>(R.id.btnTrim)
+        val btnTrim = findViewById<RekPillButton>(R.id.btnTrim)
+        btnPlayPause = findViewById(R.id.btnPlayPause)
+        seekProgress = findViewById(R.id.seekProgress)
+        tvTimeCurrent = findViewById(R.id.tvTimeCurrent)
+        tvTimeTotal = findViewById(R.id.tvTimeTotal)
+        val controls = findViewById<View>(R.id.playerControls)
 
         if (isImage) {
             videoView.visibility = View.GONE
             imageView.visibility = View.VISIBLE
             btnTrim.visibility = View.GONE
+            controls.visibility = View.GONE
             executor.execute {
                 val bmp = try {
                     val stream = if (uri.scheme == "file") File(uri.path!!).inputStream()
@@ -54,11 +92,30 @@ class PlayerActivity : AppCompatActivity() {
             }
         } else {
             imageView.visibility = View.GONE
-            val controller = MediaController(this)
-            controller.setAnchorView(videoView)
-            videoView.setMediaController(controller)
             videoView.setVideoURI(uri)
-            videoView.setOnPreparedListener { it.start() }
+            videoView.setOnPreparedListener { mp ->
+                seekProgress.maxValue = (mp.duration / 1000).coerceAtLeast(1)
+                tvTimeTotal.text = Util.formatDuration(mp.duration.toLong())
+                mp.start()
+                updatePlayButton()
+            }
+            videoView.setOnCompletionListener { updatePlayButton() }
+            videoView.setOnClickListener { togglePlay() }
+            btnPlayPause.setOnClickListener { togglePlay() }
+            seekProgress.onValueChange = { v, fromUser ->
+                if (fromUser) {
+                    userSeeking = true
+                    tvTimeCurrent.text = Util.formatDuration(v * 1000L)
+                }
+            }
+            seekProgress.onTouchEnd = {
+                userSeeking = false
+                try {
+                    videoView.seekTo(seekProgress.value * 1000)
+                } catch (e: Exception) {
+                }
+            }
+            handler.post(ticker)
         }
 
         btnTrim.setOnClickListener {
@@ -68,13 +125,36 @@ class PlayerActivity : AppCompatActivity() {
                     .putExtra(TrimActivity.EXTRA_NAME, name)
             )
         }
-        findViewById<Button>(R.id.btnShare).setOnClickListener { share() }
-        findViewById<Button>(R.id.btnDelete).setOnClickListener { confirmDelete() }
+        findViewById<RekPillButton>(R.id.btnShare).setOnClickListener { share() }
+        findViewById<RekPillButton>(R.id.btnDelete).setOnClickListener { confirmDelete() }
     }
 
-    override fun onSupportNavigateUp(): Boolean {
-        finish()
-        return true
+    private fun togglePlay() {
+        try {
+            if (videoView.isPlaying) videoView.pause() else videoView.start()
+        } catch (e: Exception) {
+        }
+        handler.postDelayed({ updatePlayButton() }, 120)
+    }
+
+    private fun updatePlayButton() {
+        val playing = try {
+            videoView.isPlaying
+        } catch (e: Exception) {
+            false
+        }
+        btnPlayPause.text = getString(if (playing) R.string.pause else R.string.play)
+        btnPlayPause.setIcon(if (playing) R.drawable.ic_notif_pause else R.drawable.ic_notif_play)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (!isImage) {
+            try {
+                if (videoView.isPlaying) videoView.pause()
+            } catch (e: Exception) {
+            }
+        }
     }
 
     private fun share() {
@@ -97,32 +177,30 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun confirmDelete() {
-        AlertDialog.Builder(this)
-            .setTitle(R.string.delete)
-            .setMessage(name)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.delete) { _, _ ->
-                executor.execute {
-                    val ok = try {
-                        if (uri.scheme == "file") File(uri.path!!).delete()
-                        else contentResolver.delete(uri, null, null) > 0
-                    } catch (e: Exception) {
-                        false
-                    }
-                    runOnUiThread {
-                        if (ok) {
-                            Toast.makeText(this, R.string.deleted, Toast.LENGTH_SHORT).show()
-                            finish()
-                        } else {
-                            Toast.makeText(this, R.string.delete_failed, Toast.LENGTH_SHORT).show()
-                        }
+        RekDialogs.showConfirm(
+            this, getString(R.string.delete), name, getString(R.string.delete)
+        ) {
+            executor.execute {
+                val ok = try {
+                    if (uri.scheme == "file") File(uri.path!!).delete()
+                    else contentResolver.delete(uri, null, null) > 0
+                } catch (e: Exception) {
+                    false
+                }
+                runOnUiThread {
+                    if (ok) {
+                        Toast.makeText(this, R.string.deleted, Toast.LENGTH_SHORT).show()
+                        finish()
+                    } else {
+                        Toast.makeText(this, R.string.delete_failed, Toast.LENGTH_SHORT).show()
                     }
                 }
             }
-            .show()
+        }
     }
 
     override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
         executor.shutdownNow()
         super.onDestroy()
     }

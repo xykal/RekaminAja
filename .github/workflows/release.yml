@@ -81,9 +81,24 @@ jobs:
           "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs "$APK"
           "$ANDROID_HOME/build-tools/37.0.0/aapt2" dump badging "$APK" | head -30
 
+      # Catatan rilis diambil dari CHANGELOG agar bersih dan konsisten (tanpa emoji).
+      - name: Prepare release notes from CHANGELOG
+        shell: bash
+        run: |
+          set -e
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v ver="$VERSION" '
+            $0 ~ "^## " ver " " { flag=1; print; next }
+            /^## / && flag { exit }
+            flag { print }
+          ' CHANGELOG.md > release-notes.md
+          test -s release-notes.md
+          cat release-notes.md
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
-          generate_release_notes: true
+          body_path: release-notes.md
+          generate_release_notes: false
           fail_on_unmatched_files: true

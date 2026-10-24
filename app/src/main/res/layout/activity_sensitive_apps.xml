@@ -1,17 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bg_app"
+    android:fitsSystemWindows="true"
     android:orientation="vertical">
 
-    <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/toolbar"
+    <id.rekaminaja.app.ui.RekTopBar
+        android:id="@+id/topBar"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize" />
+        android:layout_height="wrap_content"
+        app:rekTitle="@string/sensitive_apps" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/bg_card"
+        android:elevation="1dp"
         android:orientation="vertical"
         android:padding="16dp">
 
@@ -19,39 +27,77 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/sensitive_apps_desc"
-            android:textAppearance="?attr/textAppearanceBodyMedium" />
+            android:textColor="@color/ink_soft"
+            android:textSize="13sp" />
 
         <TextView
             android:id="@+id/usageStatus"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textAppearance="?attr/textAppearanceTitleSmall" />
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_chip_brand"
+            android:fontFamily="sans-serif-medium"
+            android:paddingStart="11dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="11dp"
+            android:paddingBottom="6dp"
+            android:textColor="@color/brand_deep"
+            android:textSize="12sp" />
 
-        <com.google.android.material.button.MaterialButton
+        <id.rekaminaja.app.ui.RekPillButton
             android:id="@+id/btnUsageAccess"
-            style="?attr/materialButtonOutlinedStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="@string/open_settings" />
+            android:layout_marginTop="10dp"
+            app:rekIcon="@drawable/ic_sliders"
+            app:rekText="@string/open_settings"
+            app:rekVariant="soft" />
 
-        <EditText
-            android:id="@+id/searchBox"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:hint="@string/search_apps"
-            android:importantForAutofill="no"
-            android:inputType="text"
-            android:singleLine="true" />
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_input"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_search"
+                app:tint="@color/muted" />
+
+            <EditText
+                android:id="@+id/searchBox"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:background="@null"
+                android:hint="@string/search_apps"
+                android:importantForAutofill="no"
+                android:inputType="text"
+                android:paddingTop="13dp"
+                android:paddingBottom="13dp"
+                android:singleLine="true"
+                android:textColor="@color/ink"
+                android:textColorHint="@color/faint"
+                android:textSize="14sp" />
+        </LinearLayout>
     </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/appsList"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:layout_marginTop="6dp"
         android:layout_weight="1"
         android:clipToPadding="false"
-        android:paddingHorizontal="8dp" />
+        android:paddingStart="16dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="16dp" />
 </LinearLayout>
