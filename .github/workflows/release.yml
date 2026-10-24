@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & publish GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Install Android SDK packages (API 37)
+        shell: bash
+        run: |
+          set -x
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" "platforms;android-37" "build-tools;37.0.0" "platform-tools" \
+            || "$SDKMANAGER" "platforms;android-37.0" "build-tools;37.0.0" "platform-tools" \
+            || true
+
+      # Signing produksi dari GitHub Secrets (lihat docs/BUILD_RELEASE.md).
+      # Kalau secret belum dipasang, build tetap jalan memakai debug key (fallback di build.gradle.kts).
+      - name: Prepare signing (optional)
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/rekaminaja.jks"
+            cat > keystore.properties <<EOF
+          storeFile=$RUNNER_TEMP/rekaminaja.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+            echo "Production signing enabled."
+          else
+            echo "::warning::KEYSTORE_BASE64 secret not set — release will be signed with the DEBUG key. Set up a production keystore before public distribution (docs/BUILD_RELEASE.md)."
+          fi
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Build release APK + AAB
+        run: ./gradlew :app:assembleRelease :app:bundleRelease --stacktrace --console=plain
+
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          set -e
+          mkdir -p dist
+          TAG="${GITHUB_REF_NAME}"
+          cp app/build/outputs/apk/release/*.apk "dist/RekaminAja-${TAG}.apk"
+          cp app/build/outputs/bundle/release/*.aab "dist/RekaminAja-${TAG}.aab"
+          (cd dist && sha256sum * > SHA256SUMS.txt)
+          ls -lh dist
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_record"
+        android:shortcutId="record"
+        android:shortcutLongLabel="@string/shortcut_record_long"
+        android:shortcutShortLabel="@string/shortcut_record">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="id.rekaminaja.app.MainActivity"
+            android:targetPackage="id.rekaminaja.app">
+            <extra android:name="auto" android:value="record" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_screenshot"
+        android:shortcutId="screenshot"
+        android:shortcutLongLabel="@string/shortcut_shot_long"
+        android:shortcutShortLabel="@string/shortcut_shot">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="id.rekaminaja.app.MainActivity"
+            android:targetPackage="id.rekaminaja.app">
+            <extra android:name="auto" android:value="screenshot" />
+        </intent>
+    </shortcut>
+</shortcuts>

@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RekaminAja</string>
+    <string name="tagline">Perekam layar gratis. Tanpa watermark. Tanpa iklan. Tanpa pelacakan.</string>
+
+    <string name="channel_recording">Perekaman</string>
+    <string name="channel_recording_desc">Ditampilkan selama layar direkam</string>
+    <string name="channel_done">Rekaman selesai</string>
+
+    <string name="notif_recording">Merekam layar</string>
+    <string name="notif_paused">Rekaman dijeda</string>
+    <string name="notif_preparing">Menyiapkan…</string>
+    <string name="ready_to_record">Siap merekam</string>
+
+    <string name="start_recording">Mulai rekam</string>
+    <string name="stop">Berhenti</string>
+    <string name="pause">Jeda</string>
+    <string name="resume">Lanjut</string>
+    <string name="screenshot">Screenshot</string>
+    <string name="settings">Pengaturan</string>
+    <string name="gallery">Galeri</string>
+    <string name="close">Tutup</string>
+    <string name="cancel">Batal</string>
+    <string name="save">Simpan</string>
+    <string name="play">Putar</string>
+    <string name="share">Bagikan</string>
+    <string name="delete">Hapus</string>
+    <string name="deleted">Terhapus</string>
+    <string name="delete_failed">File ini tidak bisa dihapus</string>
+    <string name="open_app">Buka aplikasi</string>
+    <string name="open_settings">Buka pengaturan</string>
+    <string name="preview">Pratinjau</string>
+
+    <string name="recording_saved">Rekaman tersimpan di Movies/RekaminAja</string>
+    <string name="recording_failed">Rekaman gagal atau terlalu pendek</string>
+    <string name="tap_to_watch">Ketuk untuk menonton</string>
+    <string name="screenshot_saved">Screenshot tersimpan di Pictures/RekaminAja</string>
+    <string name="screenshot_failed">Screenshot gagal</string>
+    <string name="screenshot_while_recording">Hentikan rekaman dulu untuk mengambil screenshot</string>
+    <string name="error_start_failed">Terjadi kesalahan</string>
+    <string name="capture_permission_denied">Izin tangkapan layar ditolak</string>
+    <string name="mic_denied_silent">Mikrofon ditolak — merekam tanpa suara</string>
+    <string name="storage_denied_note">Penyimpanan ditolak — rekaman tetap ada di folder aplikasi &amp; tampil di Galeri aplikasi</string>
+    <string name="overlay_needed">Izinkan “Tampil di atas aplikasi lain” untuk memakai fitur ini</string>
+    <string name="internal_audio_fallback">Audio internal tidak tersedia di perangkat ini — beralih ke mode cadangan</string>
+    <string name="internal_audio_needs_android10">Audio internal perlu Android 10+ — memakai mikrofon</string>
+
+    <string name="pro_tools">Alat Pro</string>
+    <string name="recent">Terbaru</string>
+    <string name="no_media_yet">Masih kosong. Hasil rekaman akan muncul di sini.</string>
+    <string name="storage_free_format">Ruang kosong: %1$s</string>
+
+    <string name="bubble_on">Bola melayang: NYALA</string>
+    <string name="bubble_off">Bola melayang: MATI</string>
+    <string name="hide_bubble">Sembunyikan bola</string>
+    <string name="facecam">Facecam</string>
+    <string name="facecam_on">Facecam: NYALA</string>
+    <string name="facecam_off">Facecam: MATI</string>
+    <string name="facecam_permission">Izin kamera diperlukan untuk facecam</string>
+    <string name="facecam_failed">Kamera facecam tidak bisa dibuka</string>
+    <string name="draw_on_screen">Gambar di layar</string>
+    <string name="draw_color">Warna</string>
+    <string name="draw_undo">Urungkan</string>
+    <string name="draw_clear">Bersihkan</string>
+
+    <string name="censor_zones">Zona sensor</string>
+    <string name="censored_label">DISENSOR</string>
+    <string name="select_zone_first">Pilih zona dulu</string>
+    <string name="zones_saved">Zona sensor tersimpan</string>
+    <string name="add_zone">Tambah zona</string>
+    <string name="delete_zone">Hapus zona</string>
+    <string name="censor_instructions">Seret kotak untuk memindah. Seret titik putih untuk mengubah ukuran. Kotak hitam ini digambar di atas layar selama merekam, jadi apa pun di baliknya tetap tersembunyi di video — cocok untuk notifikasi, nomor HP, dan chat.</string>
+    <string name="top_of_screen">Bagian atas layar</string>
+    <string name="bottom_of_screen">Bagian bawah layar</string>
+
+    <string name="sensitive_apps">Aplikasi sensitif</string>
+    <string name="sensitive_apps_desc">Saat aplikasi terpilih tampil di latar depan, RekaminAja otomatis JEDA dan menutup layar, lalu lanjut sendiri setelahnya. Perlu Akses penggunaan.</string>
+    <string name="usage_access_on">Akses penggunaan: DIIZINKAN</string>
+    <string name="usage_access_off">Akses penggunaan: BELUM diizinkan</string>
+    <string name="search_apps">Cari aplikasi…</string>
+    <string name="shield_active_text">🔒 Pelindung privasi aktif\nRekaman dijeda otomatis</string>
+
+    <string name="trim_video">Potong video</string>
+    <string name="trim_range_format">%1$s → %2$s  (durasi %3$s)</string>
+    <string name="trim_saved">Video hasil potongan tersimpan</string>
+    <string name="trim_failed">Potong video gagal</string>
+    <string name="trim_start">Mulai</string>
+    <string name="trim_end">Akhir</string>
+
+    <string name="video_section">Video</string>
+    <string name="resolution">Resolusi</string>
+    <string name="fps">Frame rate</string>
+    <string name="bitrate">Bitrate</string>
+    <string name="bitrate_auto">Otomatis</string>
+    <string name="res_native">Asli (perangkat)</string>
+    <string name="audio_section">Audio</string>
+    <string name="audio_source">Sumber audio</string>
+    <string name="audio_mic">Mikrofon</string>
+    <string name="audio_internal">Audio internal (Android 10+)</string>
+    <string name="audio_mix">Internal + mikrofon</string>
+    <string name="audio_none">Tanpa suara</string>
+    <string name="audio_note_old">Catatan: audio internal perlu Android 10+. Di perangkat ini akan beralih ke mikrofon.</string>
+    <string name="recording_section">Perekaman</string>
+    <string name="countdown">Hitung mundur sebelum merekam</string>
+    <string name="floating_bubble">Tampilkan bola melayang saat merekam</string>
+    <string name="overlay_section">Facecam &amp; overlay</string>
+    <string name="facecam_default">Facecam nyala secara bawaan</string>
+    <string name="front_camera">Pakai kamera depan</string>
+    <string name="facecam_size">Ukuran facecam</string>
+    <string name="privacy_section">Pelindung Privasi</string>
+    <string name="censor_enable">Aktifkan zona sensor saat merekam</string>
+    <string name="autopause_enable">Jeda otomatis untuk aplikasi sensitif</string>
+    <string name="edit_censor_zones">Atur zona sensor</string>
+    <string name="choose_sensitive_apps">Pilih aplikasi sensitif</string>
+    <string name="battery_section">Baterai</string>
+    <string name="battery_desc">Sebagian HP mematikan rekaman panjang di latar belakang. Izinkan RekaminAja mengabaikan optimasi baterai agar rekaman panjang tetap aman.</string>
+    <string name="battery_btn">Abaikan optimasi baterai</string>
+    <string name="battery_ok">Optimasi baterai sudah diabaikan ✓</string>
+    <string name="about_format">RekaminAja %1$s — gratis &amp; sumber terbuka. Tanpa izin internet, tanpa iklan, tanpa pelacakan. Rekaman tidak pernah meninggalkan HP kamu.</string>
+
+    <string name="overlay_warn_text">Bola melayang, facecam, zona sensor, dan gambar di layar membutuhkan izin “Tampil di atas aplikasi lain”.</string>
+
+    <string name="shortcut_record">Rekam</string>
+    <string name="shortcut_record_long">Mulai merekam layar</string>
+    <string name="shortcut_shot">Screenshot</string>
+    <string name="shortcut_shot_long">Ambil screenshot</string>
+</resources>

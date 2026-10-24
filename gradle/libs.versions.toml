@@ -1,0 +1,16 @@
+[versions]
+# Toolchain — diverifikasi dari maven-metadata resmi (Okt 2026)
+agp = "9.4.1"
+coreKtx = "1.19.1"
+appcompat = "1.8.0"
+material = "1.14.0"
+recyclerview = "1.4.0"
+
+[libraries]
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+androidx-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
