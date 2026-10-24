@@ -171,6 +171,7 @@ class ScreenRecordService : Service() {
             val manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE)
                 as MediaProjectionManager
             val proj = manager.getMediaProjection(resultCode, data)
+                ?: throw IllegalStateException("MediaProjection null")
             projection = proj
             // WAJIB sebelum createVirtualDisplay (Android 14+).
             proj.registerCallback(projectionCallback, workerHandler)

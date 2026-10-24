@@ -76,6 +76,7 @@ class ScreenshotService : Service() {
             val manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE)
                 as MediaProjectionManager
             val proj = manager.getMediaProjection(resultCode, data)
+                ?: throw IllegalStateException("MediaProjection null")
             projection = proj
             proj.registerCallback(callback, handler)
             val size = Util.realDisplaySize(this)
