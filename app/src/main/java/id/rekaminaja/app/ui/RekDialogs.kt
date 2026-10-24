@@ -21,6 +21,47 @@ import id.rekaminaja.app.util.Util
  */
 object RekDialogs {
 
+    class ProgressController internal constructor(
+        private val dialog: Dialog,
+        private val messageView: TextView,
+        private val percentView: TextView,
+        private val fillView: View,
+        private val spacerView: View
+    ) {
+        fun update(percent: Int, message: String) {
+            val p = percent.coerceIn(0, 100)
+            val update = Runnable {
+                if (dialog.isShowing) {
+                    messageView.text = message
+                    percentView.text = percentView.context
+                        .getString(R.string.subtitle_progress_format, p)
+                    (fillView.layoutParams as? LinearLayout.LayoutParams)?.let {
+                        it.weight = p.toFloat()
+                        fillView.layoutParams = it
+                    }
+                    (spacerView.layoutParams as? LinearLayout.LayoutParams)?.let {
+                        it.weight = (100 - p).toFloat()
+                        spacerView.layoutParams = it
+                    }
+                }
+            }
+            if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+                update.run()
+            } else {
+                messageView.post(update)
+            }
+        }
+
+        fun dismiss() {
+            try {
+                if (dialog.isShowing) dialog.dismiss()
+            } catch (e: Exception) {
+            }
+        }
+
+        val isShowing: Boolean get() = dialog.isShowing
+    }
+
     private fun card(context: Context): LinearLayout {
         return LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -207,5 +248,117 @@ object RekDialogs {
             setLayout(w, WindowManager.LayoutParams.WRAP_CONTENT)
         }
         dialog.show()
+    }
+
+    fun showProgress(
+        context: Context,
+        title: String,
+        initialMessage: String,
+        note: String? = null,
+        onCancel: () -> Unit
+    ): ProgressController {
+        val content = card(context)
+        content.addView(titleView(context, title))
+
+        val row = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val spinner = RekSpinner(context).apply {
+            val s = Util.dp(context, 40)
+            layoutParams = LinearLayout.LayoutParams(s, s)
+        }
+        row.addView(spinner)
+
+        val column = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+            ).apply { marginStart = Util.dp(context, 12) }
+        }
+        val messageView = TextView(context).apply {
+            text = initialMessage
+            textSize = 14f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            setTextColor(ContextCompat.getColor(context, R.color.ink))
+        }
+        column.addView(messageView)
+        val percentView = TextView(context).apply {
+            text = context.getString(R.string.subtitle_progress_format, 0)
+            textSize = 12.5f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            setTextColor(ContextCompat.getColor(context, R.color.brand_deep))
+        }
+        column.addView(percentView)
+        row.addView(column)
+        content.addView(row)
+
+        val fillView = View(context).apply {
+            background = GradientDrawable().apply {
+                cornerRadius = Util.dp(context, 999).toFloat()
+                setColor(ContextCompat.getColor(context, R.color.brand))
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.MATCH_PARENT, 0f
+            )
+        }
+        val spacerView = View(context).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.MATCH_PARENT, 100f
+            )
+        }
+        val track = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            background = GradientDrawable().apply {
+                cornerRadius = Util.dp(context, 999).toFloat()
+                setColor(ContextCompat.getColor(context, R.color.bg_soft_pressed))
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                Util.dp(context, 8)
+            ).apply { topMargin = Util.dp(context, 16) }
+        }
+        track.addView(fillView)
+        track.addView(spacerView)
+        content.addView(track)
+
+        if (!note.isNullOrBlank()) {
+            val noteView = TextView(context).apply {
+                text = note
+                textSize = 12.5f
+                setTextColor(ContextCompat.getColor(context, R.color.muted))
+                setPadding(0, Util.dp(context, 12), 0, 0)
+            }
+            content.addView(noteView)
+        }
+
+        val dialog = Dialog(context)
+        lateinit var controller: ProgressController
+        val cancel = RekPillButton(context).apply {
+            setVariantKind(RekPillButton.VARIANT_SOFT)
+            text = context.getString(R.string.cancel)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = Util.dp(context, 16) }
+            setOnClickListener {
+                controller.dismiss()
+                onCancel()
+            }
+        }
+        content.addView(cancel)
+
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(content)
+        dialog.setCancelable(false)
+        dialog.setCanceledOnTouchOutside(false)
+        dialog.window?.apply {
+            setBackgroundDrawableResource(android.R.color.transparent)
+            val w = (context.resources.displayMetrics.widthPixels * 0.88).toInt()
+            setLayout(w, WindowManager.LayoutParams.WRAP_CONTENT)
+        }
+        controller = ProgressController(dialog, messageView, percentView, fillView, spacerView)
+        dialog.show()
+        return controller
     }
 }

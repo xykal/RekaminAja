@@ -16,6 +16,12 @@ Workflow [`Release`](../.github/workflows/release.yml) akan:
 3. Build `:app:assembleRelease` + `:app:bundleRelease`
 4. Menerbitkan **GitHub Release** berisi `RekaminAja-vX.Y.Z.apk`, `.aab`, dan `SHA256SUMS.txt`
 
+Saat build, task Gradle `downloadWhisperModel` mengunduh model Auto Subtitle dari
+revisi Hugging Face yang terpaku, memverifikasi ukuran dan SHA-256, lalu membundelnya
+sebagai asset. Unduhan ini hanya terjadi di mesin build/CI; aplikasi tetap tidak
+memiliki izin INTERNET dan model biner tidak disimpan di Git. Akibatnya APK/AAB v1.1
+jauh lebih besar daripada v1.0.
+
 Push biasa ke `main` menjalankan workflow [`CI`](../.github/workflows/ci.yml)
 (debug + release sebagai artifact).
 
@@ -71,6 +77,7 @@ rilisan awal sebelum Google Play ($25 sekali bayar).
 - [ ] Uji APK Release di perangkat beneran:
   - [ ] Rekam mode mic / internal / internal+mic / senyap
   - [ ] Audio Lab: preset Off/Natural/Podcast/Studio di mode mic dan internal+mic; bandingkan kebisingan latar dan kejernihan suara
+  - [ ] Auto Subtitle di perangkat ARM 64-bit: rekaman mic berbahasa Indonesia pendek dan panjang, mode pesawat aktif, pembatalan proses, tampilan subtitle di player, bagikan/buat ulang SRT, serta pesan untuk rekaman internal murni
   - [ ] Pause/resume, rotasi layar saat merekam, rekaman > 10 menit
   - [ ] Bola melayang, facecam, zona sensor, auto-pause app sensitif
   - [ ] Screenshot, galeri, trim, share

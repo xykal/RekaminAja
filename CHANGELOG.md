@@ -12,6 +12,12 @@
   - Penguat mikrofon 0-12 dB
   - Preset Off, Natural, Podcast, dan Studio
 - Engine perekaman codec digeneralisasi menjadi `CodecRecorderEngine` untuk audio internal, mode internal + mikrofon, dan mode mikrofon dengan efek; jalur standar otomatis dipakai sebagai cadangan bila efek tidak tersedia
+- **Auto Subtitle offline bahasa Indonesia**: membuat subtitle SRT ber-timestamp dari suara mikrofon setelah perekaman selesai, tanpa membebani proses perekaman
+  - Model Whisper Base Q5_1 dibundel di APK/AAB dan transkripsi berjalan sepenuhnya di perangkat; tidak ada audio yang diunggah
+  - Subtitle dapat ditampilkan di player, disembunyikan, dibagikan sebagai file SRT, atau dibuat ulang
+  - Akses cepat tersedia dari player dan menu tekan-lama di galeri
+  - Ditujukan untuk rekaman mikrofon/internal + mikrofon berisi suara manusia; rekaman audio internal murni dan tanpa suara dilewati
+  - Memerlukan prosesor 64-bit ARM; ukuran aplikasi bertambah karena model subtitle dibundel agar dapat bekerja offline
 
 ### Diubah
 - Layar utama baru: kartu perekam dengan timer besar, akses cepat mikrofon dan resolusi, ringkasan pengaturan, peringatan izin, enam alat, dan media terbaru

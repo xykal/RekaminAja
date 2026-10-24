@@ -25,6 +25,7 @@ Rencana distribusi: APKPure terlebih dahulu, Google Play menyusul.
 | Audio internal | Android 10+ melalui AudioPlaybackCapture, termasuk mode internal + mikrofon |
 | Mikrofon / tanpa suara | Jalur MediaRecorder native yang stabil untuk mode standar |
 | Audio Lab | Efek suara podcast yang sepenuhnya opsional: reduksi noise sistem, noise gate, kompresor, dan penguat mikrofon. Semua mati secara default |
+| Auto Subtitle | Membuat subtitle SRT bahasa Indonesia dari suara mikrofon setelah perekaman selesai, sepenuhnya offline dengan model Whisper yang dibundel di APK |
 | Jeda dan lanjut | Termasuk kontrol dari notifikasi |
 | Bola melayang | Timer dan panel kontrol untuk stop, jeda, facecam, sensor, dan gambar |
 | Screenshot | Sekali ketuk, tersimpan di Pictures/RekaminAja |
@@ -59,6 +60,25 @@ mikrofon standar apa adanya. Saat efek menyala, mikrofon melewati jalur codec ag
 suaranya bisa diproses; bila jalur codec tidak tersedia di perangkat, aplikasi
 otomatis kembali ke jalur standar.
 
+## Auto Subtitle
+
+Auto Subtitle membuat file subtitle `.srt` ber-timestamp dari suara manusia setelah
+rekaman selesai. Buka tombol **Auto Subtitle** di player, atau tekan lama video di
+galeri. Hasilnya dapat ditampilkan sebagai teks saat video diputar, dibagikan, atau
+dibuat ulang. Salinan publik SRT juga diterbitkan ke folder RekaminAja bila perangkat
+mengizinkan.
+
+Fitur ini memang berjalan **setelah perekaman**, bukan saat merekam, agar perekaman
+tetap ringan dan mulus. Transkripsi memakai Whisper multilingual yang berjalan lokal
+dengan model terkuantisasi yang dibundel di dalam APK/AAB. Tidak ada audio yang
+diunggah dan aplikasi tetap tidak memiliki izin INTERNET.
+
+Auto Subtitle ditujukan untuk rekaman mikrofon atau internal + mikrofon yang berisi
+suara manusia. Rekaman yang diketahui hanya memakai audio internal atau tanpa suara
+tidak perlu dibuatkan subtitle. Untuk video lama yang sumber audionya tidak diketahui,
+aplikasi memeriksa keberadaan suara sebelum memprosesnya. Fitur ini memerlukan prosesor
+64-bit ARM; ketepatan hasil bergantung pada kejernihan suara dan kebisingan latar.
+
 ## Cara kerja Privacy Shield
 
 Jendela overlay memang ikut tertangkap oleh MediaProjection. RekaminAja memanfaatkan
@@ -77,7 +97,8 @@ perilaku ini alih-alih melawannya:
 
 - Native Kotlin: AGP 9.4.1 (Built-in Kotlin), Gradle 9.6.0, JDK 17
 - `minSdk 24` (Android 7.0), `targetSdk 36` (Android 16), `compileSdk 37` (Android 17)
-- Dependency ramping: AndroidX Core, AppCompat, Material, RecyclerView
+- Dependency utama: AndroidX Core, AppCompat, Material, RecyclerView, Kotlin Coroutines,
+  dan Whisper Android untuk transkripsi lokal
 - `ScreenRecordService` (foreground service `mediaProjection|microphone|camera`)
   mengikuti aturan Android 14+: FGS dimulai dulu, lalu `registerCallback()`,
   lalu `createVirtualDisplay()`
@@ -85,6 +106,10 @@ perilaku ini alih-alih melawannya:
   `CodecRecorderEngine` (MediaCodec H.264 + AAC + MediaMuxer) untuk audio internal,
   mode campuran, dan pemrosesan mikrofon Audio Lab
 - Pemrosesan PCM Audio Lab ditulis khusus di `MicDsp` (high-pass, gate, kompresor, limiter)
+- Auto Subtitle mengekstrak audio menjadi potongan WAV mono 16 kHz, mentranskripsinya
+  per potongan dengan Whisper Base Q5_1, lalu menyusun cue SRT yang ringkas
+- Model subtitle diunduh Gradle hanya pada mesin build/CI dari revisi terpaku dan
+  diverifikasi SHA-256 sebelum dibundel; model biner tidak disimpan di Git
 - Seluruh komponen UI digambar sendiri: tombol rekam, toggle, slider, pilihan, dialog,
   kontrol player, dan panel overlay
 - Release: R8 minify dan shrink resources
@@ -119,7 +144,8 @@ agar arahnya selaras.
 
 ## Lisensi dan privasi
 
-[MIT](LICENSE) · [Privacy Policy](PRIVACY_POLICY.md) — tidak ada data yang dikumpulkan.
+[MIT](LICENSE) · [Privacy Policy](PRIVACY_POLICY.md) · [Third-Party Notices](THIRD_PARTY_NOTICES.md)
+— tidak ada data yang dikumpulkan.
 
 ---
 
@@ -128,6 +154,7 @@ agar arahnya selaras.
 **RekaminAja** is a free and open-source Android screen recorder written in native
 Kotlin: HD recording up to 60 FPS, internal audio on Android 10+, internal + mic mix,
 an opt-in Audio Lab that makes a phone microphone sound closer to a podcast mic,
+offline Indonesian auto subtitles generated as timestamped SRT files after recording,
 floating ball, facecam, draw-on-screen, one-tap screenshots, a built-in gallery with
 lossless trimming, and a Quick Settings tile — plus a Privacy Shield with permanent
 censor zones and auto-pause for your chosen sensitive apps. The interface is a fully

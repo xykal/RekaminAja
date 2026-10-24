@@ -11,6 +11,8 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import id.rekaminaja.app.data.GalleryLoader
 import id.rekaminaja.app.data.MediaItem
+import id.rekaminaja.app.subtitle.SubtitleStore
+import id.rekaminaja.app.subtitle.SubtitleUi
 import id.rekaminaja.app.ui.RekDialogs
 import id.rekaminaja.app.ui.RekTopBar
 import java.io.File
@@ -67,11 +69,28 @@ class GalleryActivity : AppCompatActivity() {
             getString(R.string.share),
             getString(R.string.delete)
         )
-        if (!item.isImage) labels.add(1, getString(R.string.trim_video))
+        if (!item.isImage) {
+            labels.add(1, getString(R.string.trim_video))
+            val subtitleFile = SubtitleStore.internalFile(this, item.name)
+            labels.add(
+                2,
+                getString(
+                    if (subtitleFile.isFile) {
+                        R.string.subtitle_share_srt
+                    } else {
+                        R.string.auto_subtitle
+                    }
+                )
+            )
+        }
         RekDialogs.showOptions(this, item.name, labels) { which ->
             when (labels[which]) {
                 getString(R.string.play) -> openPlayer(item)
                 getString(R.string.trim_video) -> openTrim(item)
+                getString(R.string.auto_subtitle) ->
+                    SubtitleUi.generate(this, item.uri, item.name)
+                getString(R.string.subtitle_share_srt) ->
+                    SubtitleUi.shareSrt(this, SubtitleStore.internalFile(this, item.name))
                 getString(R.string.share) -> share(item)
                 getString(R.string.delete) -> confirmDelete(item)
             }
@@ -128,6 +147,10 @@ class GalleryActivity : AppCompatActivity() {
             }
             runOnUiThread {
                 if (ok) {
+                    try {
+                        SubtitleStore.internalFile(this@GalleryActivity, item.name).delete()
+                    } catch (e: Exception) {
+                    }
                     adapter.remove(item)
                     Toast.makeText(this, R.string.deleted, Toast.LENGTH_SHORT).show()
                 } else {

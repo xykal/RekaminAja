@@ -13,6 +13,9 @@ import android.widget.Toast
 import android.widget.VideoView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
+import id.rekaminaja.app.subtitle.SubtitleCue
+import id.rekaminaja.app.subtitle.SubtitleStore
+import id.rekaminaja.app.subtitle.SubtitleUi
 import id.rekaminaja.app.ui.RekDialogs
 import id.rekaminaja.app.ui.RekPillButton
 import id.rekaminaja.app.ui.RekSlider
@@ -34,7 +37,13 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var seekProgress: RekSlider
     private lateinit var tvTimeCurrent: TextView
     private lateinit var tvTimeTotal: TextView
+    private lateinit var tvSubtitle: TextView
+    private lateinit var btnSubtitle: RekPillButton
     private var userSeeking = false
+    private var prepared = false
+    private var subtitleCues: List<SubtitleCue> = emptyList()
+    private var subtitlesEnabled = true
+    private var currentSubtitleText: String? = null
 
     private val ticker = object : Runnable {
         override fun run() {
@@ -43,13 +52,13 @@ class PlayerActivity : AppCompatActivity() {
                     if (!userSeeking) {
                         seekProgress.setValueSilently(videoView.currentPosition / 1000)
                     }
-                    tvTimeCurrent.text = Util.formatDuration(
-                        videoView.currentPosition.toLong()
-                    )
+                    val pos = videoView.currentPosition.toLong()
+                    tvTimeCurrent.text = Util.formatDuration(pos)
+                    updateSubtitleOverlay(pos)
                     updatePlayButton()
                 } catch (e: Exception) {
                 }
-                handler.postDelayed(this, 400)
+                handler.postDelayed(this, 250)
             }
         }
     }
@@ -73,6 +82,8 @@ class PlayerActivity : AppCompatActivity() {
         seekProgress = findViewById(R.id.seekProgress)
         tvTimeCurrent = findViewById(R.id.tvTimeCurrent)
         tvTimeTotal = findViewById(R.id.tvTimeTotal)
+        tvSubtitle = findViewById(R.id.tvSubtitle)
+        btnSubtitle = findViewById(R.id.btnSubtitle)
         val controls = findViewById<View>(R.id.playerControls)
 
         if (isImage) {
@@ -80,6 +91,8 @@ class PlayerActivity : AppCompatActivity() {
             imageView.visibility = View.VISIBLE
             btnTrim.visibility = View.GONE
             controls.visibility = View.GONE
+            tvSubtitle.visibility = View.GONE
+            btnSubtitle.visibility = View.GONE
             executor.execute {
                 val bmp = try {
                     val stream = if (uri.scheme == "file") File(uri.path!!).inputStream()
@@ -94,12 +107,16 @@ class PlayerActivity : AppCompatActivity() {
             imageView.visibility = View.GONE
             videoView.setVideoURI(uri)
             videoView.setOnPreparedListener { mp ->
+                prepared = true
                 seekProgress.maxValue = (mp.duration / 1000).coerceAtLeast(1)
                 tvTimeTotal.text = Util.formatDuration(mp.duration.toLong())
                 mp.start()
                 updatePlayButton()
             }
-            videoView.setOnCompletionListener { updatePlayButton() }
+            videoView.setOnCompletionListener {
+                updatePlayButton()
+                updateSubtitleOverlay(-1L)
+            }
             videoView.setOnClickListener { togglePlay() }
             btnPlayPause.setOnClickListener { togglePlay() }
             seekProgress.onValueChange = { v, fromUser ->
@@ -112,12 +129,15 @@ class PlayerActivity : AppCompatActivity() {
                 userSeeking = false
                 try {
                     videoView.seekTo(seekProgress.value * 1000)
+                    handler.postDelayed({ refreshSubtitleAtCurrentPosition() }, 150)
                 } catch (e: Exception) {
                 }
             }
             handler.post(ticker)
         }
 
+        btnSubtitle.setOnClickListener { onSubtitleButton() }
+        if (!isImage) refreshSubtitleUi()
         btnTrim.setOnClickListener {
             startActivity(
                 Intent(this, TrimActivity::class.java)
@@ -127,6 +147,125 @@ class PlayerActivity : AppCompatActivity() {
         }
         findViewById<RekPillButton>(R.id.btnShare).setOnClickListener { share() }
         findViewById<RekPillButton>(R.id.btnDelete).setOnClickListener { confirmDelete() }
+    }
+
+
+    private fun subtitleFile(): File = SubtitleStore.internalFile(this, name)
+
+    private fun refreshSubtitleUi() {
+        if (isImage) {
+            btnSubtitle.visibility = View.GONE
+            tvSubtitle.visibility = View.GONE
+            return
+        }
+        val file = subtitleFile()
+        if (file.isFile) {
+            if (subtitleCues.isEmpty()) {
+                subtitleCues = try {
+                    SubtitleStore.parseSrt(file.readText(Charsets.UTF_8))
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            }
+            btnSubtitle.text = getString(
+                if (subtitlesEnabled) R.string.subtitle_hide else R.string.subtitle_show
+            )
+        } else {
+            subtitleCues = emptyList()
+            currentSubtitleText = null
+            tvSubtitle.visibility = View.GONE
+            btnSubtitle.text = getString(R.string.auto_subtitle)
+        }
+        btnSubtitle.setIcon(R.drawable.ic_subtitle)
+    }
+
+    private fun onSubtitleButton() {
+        if (isImage) return
+        val file = subtitleFile()
+        if (!file.isFile) {
+            pauseForSubtitleGeneration()
+            SubtitleUi.generate(this, uri, name) { _, cues ->
+                subtitleCues = cues
+                subtitlesEnabled = true
+                currentSubtitleText = null
+                refreshSubtitleUi()
+                refreshSubtitleAtCurrentPosition()
+            }
+            return
+        }
+        refreshSubtitleUi()
+        RekDialogs.showOptions(
+            this,
+            getString(R.string.auto_subtitle),
+            listOf(
+                getString(if (subtitlesEnabled) R.string.subtitle_hide else R.string.subtitle_show),
+                getString(R.string.subtitle_share_srt),
+                getString(R.string.subtitle_regenerate)
+            )
+        ) { index ->
+            when (index) {
+                0 -> {
+                    subtitlesEnabled = !subtitlesEnabled
+                    currentSubtitleText = null
+                    refreshSubtitleUi()
+                    refreshSubtitleAtCurrentPosition()
+                }
+                1 -> SubtitleUi.shareSrt(this, file)
+                2 -> {
+                    pauseForSubtitleGeneration()
+                    SubtitleUi.generate(this, uri, name) { _, cues ->
+                        subtitleCues = cues
+                        subtitlesEnabled = true
+                        currentSubtitleText = null
+                        refreshSubtitleUi()
+                        refreshSubtitleAtCurrentPosition()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun pauseForSubtitleGeneration() {
+        if (!isImage && prepared) {
+            try {
+                if (videoView.isPlaying) videoView.pause()
+            } catch (e: Exception) {
+            }
+            updatePlayButton()
+        }
+    }
+
+    private fun refreshSubtitleAtCurrentPosition() {
+        if (isImage || !prepared) {
+            tvSubtitle.visibility = View.GONE
+            return
+        }
+        try {
+            updateSubtitleOverlay(videoView.currentPosition.toLong())
+        } catch (e: Exception) {
+            tvSubtitle.visibility = View.GONE
+        }
+    }
+
+    private fun updateSubtitleOverlay(positionMs: Long) {
+        if (isImage || !subtitlesEnabled || subtitleCues.isEmpty() || positionMs < 0L) {
+            if (tvSubtitle.visibility != View.GONE) tvSubtitle.visibility = View.GONE
+            currentSubtitleText = null
+            return
+        }
+        val cue = subtitleCues.firstOrNull {
+            positionMs >= it.startMs && positionMs < it.endMs
+        }
+        if (cue == null) {
+            if (tvSubtitle.visibility != View.GONE) tvSubtitle.visibility = View.GONE
+            currentSubtitleText = null
+            return
+        }
+        if (currentSubtitleText != cue.text || tvSubtitle.visibility != View.VISIBLE) {
+            tvSubtitle.text = cue.text
+            tvSubtitle.visibility = View.VISIBLE
+            currentSubtitleText = cue.text
+        }
     }
 
     private fun togglePlay() {
@@ -189,6 +328,10 @@ class PlayerActivity : AppCompatActivity() {
                 }
                 runOnUiThread {
                     if (ok) {
+                        try {
+                            subtitleFile().delete()
+                        } catch (e: Exception) {
+                        }
                         Toast.makeText(this, R.string.deleted, Toast.LENGTH_SHORT).show()
                         finish()
                     } else {

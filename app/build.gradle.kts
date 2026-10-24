@@ -1,3 +1,8 @@
+import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URI
+import java.security.MessageDigest
 import java.util.Properties
 
 plugins {
@@ -76,4 +81,119 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.recyclerview)
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.whisper.android)
+}
+
+// Model Auto Subtitle diunduh hanya di mesin build/CI lalu dibundel sebagai
+// asset. Aplikasi tetap tidak memiliki izin INTERNET dan transkripsi berjalan
+// sepenuhnya offline di perangkat.
+val whisperModelName = "ggml-base-q5_1.bin"
+val whisperModelExpectedSize = 59_707_625L
+val whisperModelExpectedSha256 =
+    "422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898"
+val whisperModelUrl =
+    "https://huggingface.co/ggerganov/whisper.cpp/resolve/" +
+        "5359861c739e955e79d9a303bcbc70fb988958b1/$whisperModelName"
+val whisperModelFile = layout.projectDirectory
+    .file("src/main/assets/models/$whisperModelName")
+    .asFile
+
+fun whisperSha256(file: File): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    file.inputStream().use { input ->
+        val buffer = ByteArray(256 * 1024)
+        while (true) {
+            val count = input.read(buffer)
+            if (count < 0) break
+            digest.update(buffer, 0, count)
+        }
+    }
+    return digest.digest().joinToString("") { "%02x".format(it) }
+}
+
+val downloadWhisperModel by tasks.registering {
+    group = "build"
+    description = "Download and verify the bundled offline Whisper model"
+    outputs.file(whisperModelFile)
+
+    doLast {
+        if (whisperModelFile.isFile &&
+            whisperModelFile.length() == whisperModelExpectedSize &&
+            whisperSha256(whisperModelFile) == whisperModelExpectedSha256
+        ) {
+            logger.lifecycle("Whisper Auto Subtitle model already verified.")
+            return@doLast
+        }
+
+        val parent = whisperModelFile.parentFile.apply { mkdirs() }
+        val temp = File(parent, "$whisperModelName.download")
+        temp.delete()
+
+        var url = URI(whisperModelUrl).toURL()
+        var downloaded = false
+        for (redirect in 0..8) {
+            val connection = url.openConnection() as HttpURLConnection
+            connection.instanceFollowRedirects = false
+            connection.connectTimeout = 30_000
+            connection.readTimeout = 180_000
+            connection.requestMethod = "GET"
+            connection.setRequestProperty("User-Agent", "RekaminAja-Gradle/1.1.0")
+
+            when (val code = connection.responseCode) {
+                in 300..399 -> {
+                    val location = connection.getHeaderField("Location")
+                        ?: throw IllegalStateException(
+                            "Whisper model redirect without a Location header"
+                        )
+                    url = URI(url.toString()).resolve(location).toURL()
+                    connection.disconnect()
+                    if (redirect == 8) {
+                        throw IllegalStateException("Too many Whisper model redirects")
+                    }
+                }
+                in 200..299 -> {
+                    connection.inputStream.use { input ->
+                        FileOutputStream(temp).use { output -> input.copyTo(output) }
+                    }
+                    downloaded = true
+                    break
+                }
+                else -> {
+                    connection.disconnect()
+                    temp.delete()
+                    throw IllegalStateException(
+                        "Failed to download Whisper model: HTTP $code"
+                    )
+                }
+            }
+        }
+
+        if (!downloaded || temp.length() != whisperModelExpectedSize) {
+            val actualSize = if (temp.exists()) temp.length() else -1L
+            temp.delete()
+            throw IllegalStateException(
+                "Whisper model size mismatch: $actualSize, " +
+                    "expected $whisperModelExpectedSize"
+            )
+        }
+        val actualSha256 = whisperSha256(temp)
+        if (actualSha256 != whisperModelExpectedSha256) {
+            temp.delete()
+            throw IllegalStateException(
+                "Whisper model SHA-256 mismatch: $actualSha256"
+            )
+        }
+
+        if (whisperModelFile.exists()) whisperModelFile.delete()
+        if (!temp.renameTo(whisperModelFile)) {
+            temp.copyTo(whisperModelFile, overwrite = true)
+            temp.delete()
+        }
+        logger.lifecycle("Whisper Auto Subtitle model downloaded and verified.")
+    }
+}
+
+tasks.named("preBuild") {
+    dependsOn(downloadWhisperModel)
 }

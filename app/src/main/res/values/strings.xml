@@ -149,4 +149,30 @@
     <string name="tap_to_open">Tap to open</string>
     <string name="tool_bubble">Floating ball</string>
     <string name="zones_count_format">%1$d zones</string>
+
+    <!-- Auto Subtitle -->
+    <string name="auto_subtitle">Auto Subtitle</string>
+    <string name="subtitle_ready">Subtitle ready</string>
+    <string name="subtitle_show">Show subtitles</string>
+    <string name="subtitle_hide">Hide subtitles</string>
+    <string name="subtitle_share_srt">Share SRT file</string>
+    <string name="subtitle_regenerate">Regenerate subtitles</string>
+    <string name="subtitle_generating">Creating subtitles</string>
+    <string name="subtitle_stage_prepare">Preparing offline speech model...</string>
+    <string name="subtitle_stage_extract">Extracting microphone audio...</string>
+    <string name="subtitle_stage_transcribe">Transcribing Indonesian speech offline...</string>
+    <string name="subtitle_stage_save">Saving SRT subtitle...</string>
+    <string name="subtitle_progress_format">%1$d%%</string>
+    <string name="subtitle_saved">Subtitle saved as SRT</string>
+    <string name="subtitle_failed">Could not create subtitles</string>
+    <string name="subtitle_no_audio">This video has no audio track</string>
+    <string name="subtitle_no_voice">No clear human voice was detected</string>
+    <string name="subtitle_not_mic">Auto Subtitle is only for microphone or human-voice recordings</string>
+    <string name="subtitle_unsupported_device">Auto Subtitle needs a 64-bit ARM device</string>
+    <string name="subtitle_model_missing">The bundled speech model is missing from this build</string>
+    <string name="subtitle_busy">Another subtitle is still being created</string>
+    <string name="subtitle_cancelled">Subtitle creation cancelled</string>
+    <string name="subtitle_unavailable_recording">Finish the current recording before creating subtitles</string>
+    <string name="subtitle_file_missing">The subtitle file could not be found</string>
+    <string name="subtitle_offline_note">Works fully offline for Indonesian microphone speech. Internal game or music audio is skipped.</string>
 </resources>

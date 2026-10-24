@@ -149,4 +149,30 @@
     <string name="tap_to_open">Ketuk untuk buka</string>
     <string name="tool_bubble">Bola melayang</string>
     <string name="zones_count_format">%1$d zona</string>
+
+    <!-- Auto Subtitle -->
+    <string name="auto_subtitle">Auto Subtitle</string>
+    <string name="subtitle_ready">Subtitle siap</string>
+    <string name="subtitle_show">Tampilkan subtitle</string>
+    <string name="subtitle_hide">Sembunyikan subtitle</string>
+    <string name="subtitle_share_srt">Bagikan file SRT</string>
+    <string name="subtitle_regenerate">Buat ulang subtitle</string>
+    <string name="subtitle_generating">Membuat subtitle</string>
+    <string name="subtitle_stage_prepare">Menyiapkan model suara offline...</string>
+    <string name="subtitle_stage_extract">Mengekstrak audio mikrofon...</string>
+    <string name="subtitle_stage_transcribe">Mentranskrip suara bahasa Indonesia secara offline...</string>
+    <string name="subtitle_stage_save">Menyimpan subtitle SRT...</string>
+    <string name="subtitle_progress_format">%1$d%%</string>
+    <string name="subtitle_saved">Subtitle tersimpan sebagai SRT</string>
+    <string name="subtitle_failed">Subtitle tidak dapat dibuat</string>
+    <string name="subtitle_no_audio">Video ini tidak memiliki trek audio</string>
+    <string name="subtitle_no_voice">Tidak terdeteksi suara manusia yang cukup jelas</string>
+    <string name="subtitle_not_mic">Auto Subtitle hanya untuk rekaman mikrofon atau suara manusia</string>
+    <string name="subtitle_unsupported_device">Auto Subtitle membutuhkan perangkat ARM 64-bit</string>
+    <string name="subtitle_model_missing">Model suara bawaan tidak ditemukan pada build ini</string>
+    <string name="subtitle_busy">Subtitle lain masih sedang dibuat</string>
+    <string name="subtitle_cancelled">Pembuatan subtitle dibatalkan</string>
+    <string name="subtitle_unavailable_recording">Selesaikan rekaman yang sedang berjalan sebelum membuat subtitle</string>
+    <string name="subtitle_file_missing">File subtitle tidak ditemukan</string>
+    <string name="subtitle_offline_note">Sepenuhnya offline untuk suara mikrofon berbahasa Indonesia. Audio internal game atau musik dilewati.</string>
 </resources>

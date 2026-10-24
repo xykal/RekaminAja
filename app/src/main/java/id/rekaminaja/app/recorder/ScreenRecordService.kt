@@ -34,6 +34,7 @@ import id.rekaminaja.app.overlay.FacecamController
 import id.rekaminaja.app.overlay.FloatingBubbleService
 import id.rekaminaja.app.overlay.OverlayUtil
 import id.rekaminaja.app.overlay.PrivacyShieldController
+import id.rekaminaja.app.subtitle.SubtitleStore
 import id.rekaminaja.app.util.Util
 import java.io.File
 import java.util.concurrent.Executors
@@ -59,6 +60,7 @@ class ScreenRecordService : Service() {
     private var outputFile: File? = null
     private var outputName: String? = null
     private var audioOverride: String? = null
+    private var activeAudioSource: String? = null
 
     private lateinit var facecam: FacecamController
     private lateinit var shield: PrivacyShieldController
@@ -192,6 +194,7 @@ class ScreenRecordService : Service() {
             outputFile = file
 
             val audio = audioOverride ?: Prefs.audioSource
+            activeAudioSource = audio
             val wantInternal = audio == Prefs.AUDIO_INTERNAL || audio == Prefs.AUDIO_MIX
             // Mic dengan efek podcast aktif wajib lewat jalur codec (PCM bisa diproses).
             val wantMicCodec = audio == Prefs.AUDIO_MIC && Prefs.anyAudioFx
@@ -314,6 +317,11 @@ class ScreenRecordService : Service() {
             var uri: android.net.Uri? = null
             if (ok && file != null && name != null) {
                 uri = OutputStore.publishVideo(this, file, name)
+                SubtitleStore.rememberAudioSource(
+                    this,
+                    name,
+                    activeAudioSource ?: (audioOverride ?: Prefs.audioSource)
+                )
             }
             val savedUri = uri
             RecorderState.set(RecorderState.State.IDLE)
