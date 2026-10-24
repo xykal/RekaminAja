@@ -21,5 +21,5 @@ env.txt
 
 # Model Whisper untuk Auto Subtitle diunduh Gradle saat build dari URL terpaku
 # dan diverifikasi SHA-256 (lihat app/build.gradle.kts). File biner 57 MB ini
-# tidak disimpan di Git, tetapi ikut dibundel ke APK/AAB hasil build.
-/app/src/main/assets/models/*.bin
+# tidak disimpan di Git, tetapi ikut dibundel ke APK/AAB edisi Full.
+/app/src/full/assets/models/*.bin

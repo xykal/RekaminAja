@@ -35,6 +35,19 @@ android {
         vectorDrawables { useSupportLibrary = true }
     }
 
+    // Full = ARM64 dengan model Auto Subtitle. Lite = universal dan jauh lebih
+    // kecil untuk perangkat 32-bit/x86; semua fitur perekam tetap tersedia,
+    // hanya Auto Subtitle yang tidak aktif karena library Whisper ARM64-only.
+    flavorDimensions += "edition"
+    productFlavors {
+        create("full") {
+            dimension = "edition"
+        }
+        create("lite") {
+            dimension = "edition"
+        }
+    }
+
     signingConfigs {
         if (signingValue("storeFile") != null) {
             create("release") {
@@ -81,8 +94,8 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.recyclerview)
-    implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.whisper.android)
+    add("fullImplementation", libs.kotlinx.coroutines.android)
+    add("fullImplementation", libs.whisper.android)
 }
 
 // Model Auto Subtitle diunduh hanya di mesin build/CI lalu dibundel sebagai
@@ -96,7 +109,7 @@ val whisperModelUrl =
     "https://huggingface.co/ggerganov/whisper.cpp/resolve/" +
         "5359861c739e955e79d9a303bcbc70fb988958b1/$whisperModelName"
 val whisperModelFile = layout.projectDirectory
-    .file("src/main/assets/models/$whisperModelName")
+    .file("src/full/assets/models/$whisperModelName")
     .asFile
 
 fun whisperSha256(file: File): String {
@@ -194,6 +207,8 @@ val downloadWhisperModel by tasks.registering {
     }
 }
 
-tasks.named("preBuild") {
-    dependsOn(downloadWhisperModel)
+tasks.configureEach {
+    if (name == "preFullDebugBuild" || name == "preFullReleaseBuild") {
+        dependsOn(downloadWhisperModel)
+    }
 }

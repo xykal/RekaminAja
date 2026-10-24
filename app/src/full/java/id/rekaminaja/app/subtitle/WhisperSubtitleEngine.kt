@@ -30,6 +30,8 @@ object WhisperSubtitleEngine {
     fun isSupportedDevice(): Boolean =
         Build.SUPPORTED_ABIS.any { it.equals("arm64-v8a", ignoreCase = true) }
 
+    fun unsupportedMessageRes(): Int = R.string.subtitle_unsupported_device
+
     fun ensureModel(
         context: Context,
         isCancelled: () -> Boolean,

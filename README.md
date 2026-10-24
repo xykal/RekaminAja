@@ -13,8 +13,14 @@ Status build dan rilis terbaru tersedia di
 
 ## Unduh
 
-Ambil APK terbaru di halaman [Releases](https://github.com/xykal/RekaminAja/releases)
-(`RekaminAja-vX.Y.Z.apk`), lalu install seperti biasa.
+Ambil APK terbaru di halaman [Releases](https://github.com/xykal/RekaminAja/releases),
+lalu install seperti biasa:
+
+- `RekaminAja-vX.Y.Z-full-arm64.apk` — pilihan utama untuk hampir semua HP Android
+  modern, termasuk Auto Subtitle offline dan model suaranya.
+- `RekaminAja-vX.Y.Z-lite-universal.apk` — edisi kecil universal untuk perangkat
+  32-bit/x86 yang lebih lama. Semua fitur perekam tersedia, kecuali Auto Subtitle.
+
 Rencana distribusi: APKPure terlebih dahulu, Google Play menyusul.
 
 ## Fitur
@@ -70,7 +76,7 @@ mengizinkan.
 
 Fitur ini memang berjalan **setelah perekaman**, bukan saat merekam, agar perekaman
 tetap ringan dan mulus. Transkripsi memakai Whisper multilingual yang berjalan lokal
-dengan model terkuantisasi yang dibundel di dalam APK/AAB. Tidak ada audio yang
+dengan model terkuantisasi yang dibundel di edisi Full ARM64. Tidak ada audio yang
 diunggah dan aplikasi tetap tidak memiliki izin INTERNET.
 
 Auto Subtitle ditujukan untuk rekaman mikrofon atau internal + mikrofon yang berisi
@@ -109,7 +115,9 @@ perilaku ini alih-alih melawannya:
 - Auto Subtitle mengekstrak audio menjadi potongan WAV mono 16 kHz, mentranskripsinya
   per potongan dengan Whisper Base Q5_1, lalu menyusun cue SRT yang ringkas
 - Model subtitle diunduh Gradle hanya pada mesin build/CI dari revisi terpaku dan
-  diverifikasi SHA-256 sebelum dibundel; model biner tidak disimpan di Git
+  diverifikasi SHA-256 sebelum dibundel ke edisi Full; model biner tidak disimpan di Git
+- Edisi Lite memakai stub subtitle tanpa dependency native/model Whisper agar tetap
+  kecil dan kompatibel universal
 - Seluruh komponen UI digambar sendiri: tombol rekam, toggle, slider, pilihan, dialog,
   kontrol player, dan panel overlay
 - Release: R8 minify dan shrink resources

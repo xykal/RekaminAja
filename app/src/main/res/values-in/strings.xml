@@ -169,6 +169,7 @@
     <string name="subtitle_no_voice">Tidak terdeteksi suara manusia yang cukup jelas</string>
     <string name="subtitle_not_mic">Auto Subtitle hanya untuk rekaman mikrofon atau suara manusia</string>
     <string name="subtitle_unsupported_device">Auto Subtitle membutuhkan perangkat ARM 64-bit</string>
+    <string name="subtitle_unsupported_edition">Auto Subtitle tidak disertakan pada edisi Universal Lite. Pasang edisi Full ARM64 untuk menggunakannya.</string>
     <string name="subtitle_model_missing">Model suara bawaan tidak ditemukan pada build ini</string>
     <string name="subtitle_busy">Subtitle lain masih sedang dibuat</string>
     <string name="subtitle_cancelled">Pembuatan subtitle dibatalkan</string>

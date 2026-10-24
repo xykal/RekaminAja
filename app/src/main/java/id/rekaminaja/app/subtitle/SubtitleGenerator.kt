@@ -76,7 +76,7 @@ object SubtitleGenerator {
                     throw SubtitleException(R.string.subtitle_not_mic)
                 }
                 if (!WhisperSubtitleEngine.isSupportedDevice()) {
-                    throw SubtitleException(R.string.subtitle_unsupported_device)
+                    throw SubtitleException(WhisperSubtitleEngine.unsupportedMessageRes())
                 }
 
                 postProgress(listener, 3, appContext.getString(R.string.subtitle_stage_extract))

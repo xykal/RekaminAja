@@ -11,8 +11,9 @@ RekaminAja is a free and open-source screen recorder. Short version:
 - No accounts, no ads, no analytics, no crash-report SDKs, no tracking of any kind.
 - Your recordings and screenshots are saved only on your device
   (`Movies/RekaminAja` and `Pictures/RekaminAja`) and never leave it unless you share them yourself.
-- Optional auto subtitles are generated locally on the device with a speech model
-  bundled in the app. Audio and subtitle text are not uploaded or shared by RekaminAja.
+- In the Full edition, optional auto subtitles are generated locally on the device
+  with a bundled speech model. Audio and subtitle text are not uploaded or shared
+  by RekaminAja.
 
 ## Permissions and why they are needed
 
