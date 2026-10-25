@@ -699,6 +699,12 @@ class FloatingBubbleService : Service() {
             View.MeasureSpec.makeMeasureSpec(display.height, View.MeasureSpec.AT_MOST)
         )
         val panelH = minOf(root.measuredHeight, (display.height * 0.8f).toInt())
+        // Kunci tinggi area scroll: padding kartu (2x14dp) + header (28dp)
+        // sudah termasuk di panelH, sisanya untuk badan yang bisa discroll.
+        val scrollH = (panelH - dp(56)).coerceAtLeast(dp(160))
+        scroll.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, scrollH
+        )
         val bp = bubbleParams
         val bubbleCx = (bp?.x ?: 0) + dp(23)
         val panelX = if (bubbleCx < display.width / 2) {
@@ -709,7 +715,7 @@ class FloatingBubbleService : Service() {
         val wantY = (bp?.y ?: dp(120)) - dp(30)
         val panelY = wantY.coerceIn(minY(), (display.height - panelH - dp(10)).coerceAtLeast(minY()))
         val lp = OverlayUtil.params(
-            panelW, panelH,
+            panelW, WindowManager.LayoutParams.WRAP_CONTENT,
             x = panelX, y = panelY, gravity = Gravity.TOP or Gravity.START
         )
         try {

@@ -393,7 +393,12 @@ class ScreenRecordService : Service() {
     private fun adjustMicVolume(deltaPercent: Int) {
         Prefs.micVolume = Prefs.micVolume + deltaPercent
         VoiceFxState.micGain = Prefs.micVolume / 100f
-        if (RecorderState.isRecording) updateNotification()
+        if (RecorderState.isRecording) {
+            updateNotification()
+        } else if (RecorderState.state != RecorderState.State.COUNTDOWN) {
+            // Service dibangunkan hanya untuk tombol ini; jangan jadi zombie.
+            stopSelf()
+        }
     }
 
     private fun toggleFacecam() {

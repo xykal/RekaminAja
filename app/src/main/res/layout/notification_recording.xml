@@ -11,7 +11,7 @@
     <ImageView
         android:layout_width="14dp"
         android:layout_height="14dp"
-        android:src="@drawable/ic_record" />
+        android:src="@drawable/ic_record_brand" />
 
     <LinearLayout
         android:layout_width="0dp"
@@ -41,7 +41,7 @@
         android:id="@+id/notif_pause"
         android:layout_width="40dp"
         android:layout_height="40dp"
-        android:background="@drawable/bg_notif_btn"
+        android:background="@drawable/bg_notif_dark"
         android:contentDescription="@string/pause"
         android:src="@drawable/ic_notif_pause" />
 
@@ -52,5 +52,5 @@
         android:layout_marginStart="8dp"
         android:background="@drawable/bg_notif_stop"
         android:contentDescription="@string/stop"
-        android:src="@drawable/ic_stop" />
+        android:src="@drawable/ic_notif_stop" />
 </LinearLayout>
