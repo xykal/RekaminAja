@@ -40,8 +40,8 @@ android {
         applicationId = "id.rekaminaja.app"
         minSdk = 24 // Android 7.0
         targetSdk = 36 // Android 16
-        versionCode = 3
-        versionName = "1.1.1"
+        versionCode = 4
+        versionName = "1.2.0"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -122,10 +122,10 @@ dependencies {
 // Model Auto Subtitle diunduh hanya di mesin build/CI lalu dibundel sebagai
 // asset. Aplikasi tetap tidak memiliki izin INTERNET dan transkripsi berjalan
 // sepenuhnya offline di perangkat.
-val whisperModelName = "ggml-base-q5_1.bin"
-val whisperModelExpectedSize = 59_707_625L
+val whisperModelName = "ggml-tiny-q5_1.bin"
+val whisperModelExpectedSize = 32_152_673L
 val whisperModelExpectedSha256 =
-    "422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898"
+    "818710568da3ca15689e31a743197b520007872ff9576237bda97bd1b469c3d7"
 val whisperModelUrl =
     "https://huggingface.co/ggerganov/whisper.cpp/resolve/" +
         "5359861c739e955e79d9a303bcbc70fb988958b1/$whisperModelName"

@@ -22,7 +22,7 @@ RekaminAja uses the following open-source components for offline Auto Subtitle.
 - Project: https://github.com/openai/whisper
 - Copyright (c) 2022 OpenAI
 - License: MIT
-- Bundled model: Whisper Base Q5_1 (`ggml-base-q5_1.bin`)
+- Bundled model: Whisper Tiny Q5_1 (`ggml-tiny-q5_1.bin`)
 
 ## MIT License
 

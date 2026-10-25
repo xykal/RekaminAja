@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.0 — 2026-10-25
+
+### Baru
+- **Deck Efek Suara di panel melayang**: preset karakter suara mic yang bisa diganti langsung saat merekam — Normal, Super Bersih, Ngebas Podcast, Echo, Bergema, Alien, Robot, dan Cempreng — lengkap dengan slider intensitas
+- **Atur volume di mana saja**: volume mic (10-200%) dan volume HP bisa diatur dari panel melayang; volume mic juga bisa dinaik-turunkan dari tombol -/+ pada notifikasi perekaman yang diperluas
+- **Logo aplikasi baru**: gradasi coral ke violet dengan bingkai viewfinder dan titik rekam, termasuk ikon adaptif dan ikon tematik (monochrome)
+
+### Perbaikan
+- **Bola melayang ditulis ulang**: kini 46dp, selalu menempel di tepi kiri/kanan dengan animasi snap, posisinya diingat antar sesi, meredup saat diam, dan bisa dihilangkan dengan menyeretnya ke lingkaran hapus di bagian bawah-tengah layar seperti XRecorder; panelnya kini berupa deck dengan tombol aksi bulat
+- **Notifikasi perekaman custom**: kartu Light Clean sendiri berisi status, timer, tombol jeda/stop, dan pengatur volume mic
+- **Auto Subtitle jauh lebih ringan**: model diganti Whisper Tiny Q5_1 (APK Full turun ke sekitar 33MB dan transkripsi jauh lebih cepat), potongan audio dipangkas menjadi maks 30 detik dengan progres per potongan dan timer berjalan, file potongan langsung dihapus setelah ditranskrip, serta salinan model berpindah ke cache agar data aplikasi tidak membengkak
+- **Tidak ada lagi garis hitam di bagian atas saat merekam**: zona sensor bawaan lama di area status dihapus; zona sensor kini kosong sampai pengguna membuatnya sendiri
+- Mesin DSP mic diperbarui: rantai volume, high-pass, noise gate adaptif, EQ (low-shelf ngebas dan presence), kompresor, efek karakter (delay, reverb Schroeder, ring modulator, pitch shifter), dan soft limiter
+
 ## 1.1.1 — 2026-10-25
 
 ### Baru

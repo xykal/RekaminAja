@@ -415,7 +415,9 @@ class SubtitleAudioExtractor(context: Context) {
         private const val FRAME_SAMPLES = 320 // 20 ms pada 16 kHz
         private const val VOICE_RMS_THRESHOLD = 0.007f
         private const val SILENCE_CUT_FRAMES = 30 // sekitar 600 ms
-        private const val MIN_CHUNK_SAMPLES = TARGET_SAMPLE_RATE * 45L
-        private const val MAX_CHUNK_SAMPLES = TARGET_SAMPLE_RATE * 90L
+        // v1.2: potongan maks 30 d (jendela native Whisper). Versi lama 90 d
+        // membuat progres seolah stuck ber menit-menit di HP lama.
+        private const val MIN_CHUNK_SAMPLES = TARGET_SAMPLE_RATE * 12L
+        private const val MAX_CHUNK_SAMPLES = TARGET_SAMPLE_RATE * 30L
     }
 }

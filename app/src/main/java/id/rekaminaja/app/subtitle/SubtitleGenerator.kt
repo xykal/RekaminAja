@@ -80,6 +80,16 @@ object SubtitleGenerator {
                 }
 
                 postProgress(listener, 3, appContext.getString(R.string.subtitle_stage_extract))
+                // Bersihkan sisa folder kerja dari proses yang mati paksa agar
+                // cache tidak menumpuk dari waktu ke waktu.
+                try {
+                    appContext.cacheDir.listFiles()?.forEach { f ->
+                        if (f.isDirectory && f.name.startsWith("subtitle_work_")) {
+                            f.deleteRecursively()
+                        }
+                    }
+                } catch (e: Exception) {
+                }
                 workDir = File(appContext.cacheDir, "subtitle_work_${System.currentTimeMillis()}")
                 val extraction = SubtitleAudioExtractor(appContext).extract(
                     uri = uri,
@@ -130,7 +140,10 @@ object SubtitleGenerator {
                         postProgress(
                             listener,
                             percent,
-                            appContext.getString(R.string.subtitle_stage_transcribe)
+                            appContext.getString(
+                                R.string.subtitle_stage_transcribe_chunk,
+                                completed.coerceAtLeast(1), total.coerceAtLeast(1)
+                            )
                         )
                     }
                 )

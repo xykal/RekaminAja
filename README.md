@@ -33,9 +33,10 @@ Rencana distribusi: APKPure terlebih dahulu, Google Play menyusul.
 | Audio internal | Android 10+ melalui AudioPlaybackCapture, termasuk mode internal + mikrofon |
 | Mikrofon / tanpa suara | Jalur MediaRecorder native yang stabil untuk mode standar |
 | Audio Lab | Efek suara podcast yang sepenuhnya opsional: reduksi noise sistem, noise gate, kompresor, dan penguat mikrofon. Semua mati secara default |
+| Deck Efek Suara | Preset suara mic live dari panel melayang: Super Bersih, Ngebas Podcast, Echo, Bergema, Alien, Robot, Cempreng, plus intensitas dan volume mic 10-200% |
 | Auto Subtitle | Membuat subtitle SRT bahasa Indonesia dari suara mikrofon setelah perekaman selesai, sepenuhnya offline dengan model Whisper yang dibundel di APK |
-| Jeda dan lanjut | Termasuk kontrol dari notifikasi |
-| Bola melayang | Timer dan panel kontrol untuk stop, jeda, facecam, sensor, dan gambar |
+| Jeda dan lanjut | Termasuk kontrol dari notifikasi custom berisi timer, jeda/stop, dan pengatur volume mic |
+| Bola melayang | Bola kecil 46dp yang menempel di tepi kiri/kanan; seret ke lingkaran hapus di bawah untuk menyembunyikan. Panel deck berisi aksi bulat, Deck Efek Suara, volume mic, dan volume HP |
 | Screenshot | Sekali ketuk, tersimpan di Pictures/RekaminAja |
 | Facecam | Overlay kamera bundar berbasis Camera2, bisa diseret, tekan-tahan untuk ganti kamera |
 | Gambar di layar | Kuas overlay; coretan ikut terekam, cocok untuk tutorial |
@@ -116,7 +117,7 @@ perilaku ini alih-alih melawannya:
   mode campuran, dan pemrosesan mikrofon Audio Lab
 - Pemrosesan PCM Audio Lab ditulis khusus di `MicDsp` (high-pass, gate, kompresor, limiter)
 - Auto Subtitle mengekstrak audio menjadi potongan WAV mono 16 kHz, mentranskripsinya
-  per potongan dengan Whisper Base Q5_1, lalu menyusun cue SRT yang ringkas
+  per potongan dengan Whisper Tiny Q5_1, lalu menyusun cue SRT yang ringkas
 - Model subtitle diunduh Gradle hanya pada mesin build/CI dari revisi terpaku dan
   diverifikasi SHA-256 sebelum dibundel ke edisi Full; model biner tidak disimpan di Git
 - Edisi Lite memakai stub subtitle tanpa dependency native/model Whisper agar tetap

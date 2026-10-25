@@ -176,4 +176,26 @@
     <string name="subtitle_unavailable_recording">Finish the current recording before creating subtitles</string>
     <string name="subtitle_file_missing">The subtitle file could not be found</string>
     <string name="subtitle_offline_note">Works fully offline for Indonesian microphone speech. Internal game or music audio is skipped.</string>
+
+    <!-- v1.2 voice FX deck, volumes, notification -->
+    <string name="voice_preset">Voice preset</string>
+    <string name="voice_preset_desc">Character of your mic voice while recording. Can also be switched live from the floating deck.</string>
+    <string name="fx_preset_normal">Normal</string>
+    <string name="fx_preset_clean">Super Clean</string>
+    <string name="fx_preset_bass">Podcast Bass</string>
+    <string name="fx_preset_echo">Echo</string>
+    <string name="fx_preset_reverb">Reverb</string>
+    <string name="fx_preset_alien">Alien</string>
+    <string name="fx_preset_robot">Robot</string>
+    <string name="fx_preset_chipmunk">Chipmunk</string>
+    <string name="fx_deck_title">Voice FX Deck</string>
+    <string name="fx_intensity">Effect intensity</string>
+    <string name="mic_volume">Mic volume</string>
+    <string name="mic_volume_format">%1$d%%</string>
+    <string name="device_volume">Device volume</string>
+    <string name="fx_applies_next">Voice effects will apply from the next recording</string>
+    <string name="notif_mic_format">Mic %1$d%%</string>
+    <string name="bubble_remove_hint">Release to hide the bubble</string>
+    <string name="subtitle_stage_transcribe_chunk">Transcribing part %1$d of %2$d</string>
+    <string name="subtitle_elapsed_format">Elapsed %1$s</string>
 </resources>

@@ -20,6 +20,11 @@ object RecorderState {
     @Volatile
     var facecamVisible: Boolean = false
 
+    /** True bila rekaman aktif melewati jalur codec+DSP sehingga Deck Efek
+     *  Suara (preset/volume mic) berlaku langsung, bukan rekaman berikutnya. */
+    @Volatile
+    var fxLive: Boolean = false
+
     private var startRealtime = 0L
     private var pausedAccumulated = 0L
     private var pauseStart = 0L
@@ -46,6 +51,7 @@ object RecorderState {
                 startRealtime = 0L; pausedAccumulated = 0L; pauseStart = 0L
                 autoPausedBySensitiveApp = false
                 facecamVisible = false
+                fxLive = false
             }
             State.COUNTDOWN -> Unit
         }

@@ -26,8 +26,26 @@ object RekDialogs {
         private val messageView: TextView,
         private val percentView: TextView,
         private val fillView: View,
-        private val spacerView: View
+        private val spacerView: View,
+        private val elapsedView: TextView? = null
     ) {
+        // Timer berjalan supaya proses panjang tidak terasa stuck.
+        private val startedAt = android.os.SystemClock.elapsedRealtime()
+        private val ticker = object : Runnable {
+            override fun run() {
+                val v = elapsedView ?: return
+                if (!dialog.isShowing) return
+                val elapsed = android.os.SystemClock.elapsedRealtime() - startedAt
+                v.text = v.context.getString(
+                    R.string.subtitle_elapsed_format, Util.formatDuration(elapsed)
+                )
+                v.postDelayed(this, 1_000)
+            }
+        }
+
+        init {
+            elapsedView?.post(ticker)
+        }
         fun update(percent: Int, message: String) {
             val p = percent.coerceIn(0, 100)
             val update = Runnable {
@@ -53,6 +71,7 @@ object RekDialogs {
         }
 
         fun dismiss() {
+            elapsedView?.removeCallbacks(ticker)
             try {
                 if (dialog.isShowing) dialog.dismiss()
             } catch (e: Exception) {
@@ -290,6 +309,14 @@ object RekDialogs {
             setTextColor(ContextCompat.getColor(context, R.color.brand_deep))
         }
         column.addView(percentView)
+        val elapsedView = TextView(context).apply {
+            text = context.getString(
+                R.string.subtitle_elapsed_format, Util.formatDuration(0L)
+            )
+            textSize = 11.5f
+            setTextColor(ContextCompat.getColor(context, R.color.muted))
+        }
+        column.addView(elapsedView)
         row.addView(column)
         content.addView(row)
 
@@ -357,7 +384,9 @@ object RekDialogs {
             val w = (context.resources.displayMetrics.widthPixels * 0.88).toInt()
             setLayout(w, WindowManager.LayoutParams.WRAP_CONTENT)
         }
-        controller = ProgressController(dialog, messageView, percentView, fillView, spacerView)
+        controller = ProgressController(
+            dialog, messageView, percentView, fillView, spacerView, elapsedView
+        )
         dialog.show()
         return controller
     }

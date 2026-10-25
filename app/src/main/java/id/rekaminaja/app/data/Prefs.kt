@@ -67,6 +67,39 @@ object Prefs {
     val anyAudioFx: Boolean
         get() = fxNoiseSystem || fxGate || fxCompressor
 
+    // ---- Deck Efek Suara v1.2 (preset karakter suara, live dari floating) ----
+
+    /** Id preset VoiceFx: normal, clean, bass, echo, reverb, alien, robot, chipmunk. */
+    var voicePreset: String
+        get() = sp.getString("voice_preset", "normal") ?: "normal"
+        set(v) = sp.edit().putString("voice_preset", v).apply()
+
+    /** Intensitas efek preset 0..100. */
+    var fxIntensity: Int
+        get() = sp.getInt("fx_intensity", 70)
+        set(v) = sp.edit().putInt("fx_intensity", v.coerceIn(0, 100)).apply()
+
+    /** Volume mikrofon (gain) 10..200 persen. 100 = apa adanya. */
+    var micVolume: Int
+        get() = sp.getInt("mic_volume", 100)
+        set(v) = sp.edit().putInt("mic_volume", v.coerceIn(10, 200)).apply()
+
+    /** True bila jalur codec+DSP diperlukan untuk mic pada rekaman berikutnya. */
+    val micFxActive: Boolean
+        get() = anyAudioFx || voicePreset != "normal" || micVolume != 100
+
+    // ---- Posisi bola melayang (nempel kiri/kanan, diingat antar sesi) ----
+
+    /** 0 = kiri, 1 = kanan. */
+    var bubbleSide: Int
+        get() = sp.getInt("bubble_side", 1)
+        set(v) = sp.edit().putInt("bubble_side", v).apply()
+
+    /** Posisi Y bola dalam px dari atas layar. -1 = belum pernah digeser. */
+    var bubbleY: Int
+        get() = sp.getInt("bubble_y", -1)
+        set(v) = sp.edit().putInt("bubble_y", v).apply()
+
     var countdownSec: Int
         get() = sp.getInt("countdown", 3)
         set(v) = sp.edit().putInt("countdown", v).apply()
@@ -101,18 +134,27 @@ object Prefs {
 
     var censorZones: List<CensorZone>
         get() {
-            val raw = sp.getString("censor_zones", null) ?: return defaultZones()
+            val raw = sp.getString("censor_zones", null) ?: return emptyList()
             return try {
                 val arr = JSONArray(raw)
-                List(arr.length()) { i ->
+                val zones = List(arr.length()) { i ->
                     val o = arr.getJSONObject(i)
                     CensorZone(
                         o.getDouble("l").toFloat(), o.getDouble("t").toFloat(),
                         o.getDouble("r").toFloat(), o.getDouble("b").toFloat()
                     )
                 }
+                // Migrasi v1.2: zona bawaan lama adalah pita hitam penuh di
+                // bagian atas layar. Pengguna mengira itu bug ("ada hitam di
+                // atas pas rekam"), jadi pola persis zona bawaan lama dibuang
+                // kecuali pengguna pernah mengedit zona sendiri.
+                if (!sp.getBoolean("zones_user_edited", false)) {
+                    zones.filterNot { isLegacyDefaultZone(it) }
+                } else {
+                    zones
+                }
             } catch (e: Exception) {
-                defaultZones()
+                emptyList()
             }
         }
         set(v) {
@@ -124,11 +166,12 @@ object Prefs {
                         .put("r", z.right.toDouble()).put("b", z.bottom.toDouble())
                 )
             }
-            sp.edit().putString("censor_zones", arr.toString()).apply()
+            sp.edit()
+                .putString("censor_zones", arr.toString())
+                .putBoolean("zones_user_edited", true)
+                .apply()
         }
 
-    private fun defaultZones(): List<CensorZone> = listOf(
-        // Default: area notifikasi/status di bagian atas layar.
-        CensorZone(0f, 0f, 1f, 0.045f)
-    )
+    private fun isLegacyDefaultZone(z: CensorZone): Boolean =
+        z.left == 0f && z.top == 0f && z.right == 1f && z.bottom == 0.045f
 }

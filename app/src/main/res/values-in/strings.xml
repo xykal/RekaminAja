@@ -176,4 +176,26 @@
     <string name="subtitle_unavailable_recording">Selesaikan rekaman yang sedang berjalan sebelum membuat subtitle</string>
     <string name="subtitle_file_missing">File subtitle tidak ditemukan</string>
     <string name="subtitle_offline_note">Sepenuhnya offline untuk suara mikrofon berbahasa Indonesia. Audio internal game atau musik dilewati.</string>
+
+    <!-- v1.2 voice FX deck, volumes, notification -->
+    <string name="voice_preset">Preset suara</string>
+    <string name="voice_preset_desc">Karakter suara mic saat merekam. Juga bisa diganti langsung dari deck melayang.</string>
+    <string name="fx_preset_normal">Normal</string>
+    <string name="fx_preset_clean">Super Bersih</string>
+    <string name="fx_preset_bass">Ngebas Podcast</string>
+    <string name="fx_preset_echo">Echo</string>
+    <string name="fx_preset_reverb">Bergema</string>
+    <string name="fx_preset_alien">Alien</string>
+    <string name="fx_preset_robot">Robot</string>
+    <string name="fx_preset_chipmunk">Cempreng</string>
+    <string name="fx_deck_title">Deck Efek Suara</string>
+    <string name="fx_intensity">Intensitas efek</string>
+    <string name="mic_volume">Volume mic</string>
+    <string name="mic_volume_format">%1$d%%</string>
+    <string name="device_volume">Volume HP</string>
+    <string name="fx_applies_next">Efek suara berlaku mulai rekaman berikutnya</string>
+    <string name="notif_mic_format">Mic %1$d%%</string>
+    <string name="bubble_remove_hint">Lepaskan untuk menyembunyikan bola</string>
+    <string name="subtitle_stage_transcribe_chunk">Mentranskrip bagian %1$d dari %2$d</string>
+    <string name="subtitle_elapsed_format">Berjalan %1$s</string>
 </resources>

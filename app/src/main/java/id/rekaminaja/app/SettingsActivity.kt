@@ -123,6 +123,41 @@ class SettingsActivity : AppCompatActivity() {
         }
         gainSlider = gainViews.first
         gainValue = gainViews.second
+
+        // Deck Efek Suara v1.2: preset karakter + intensitas + volume mic.
+        // Nilai yang sama juga bisa diganti live dari panel bola melayang.
+        val voicePresetIds = listOf(
+            "normal", "clean", "bass", "echo", "reverb", "alien", "robot", "chipmunk"
+        )
+        addChoice(
+            lab, R.string.voice_preset,
+            listOf(
+                getString(R.string.fx_preset_normal),
+                getString(R.string.fx_preset_clean),
+                getString(R.string.fx_preset_bass),
+                getString(R.string.fx_preset_echo),
+                getString(R.string.fx_preset_reverb),
+                getString(R.string.fx_preset_alien),
+                getString(R.string.fx_preset_robot),
+                getString(R.string.fx_preset_chipmunk)
+            ),
+            voicePresetIds.indexOf(Prefs.voicePreset).coerceAtLeast(0)
+        ) {
+            Prefs.voicePreset = voicePresetIds[it]
+            id.rekaminaja.app.recorder.VoiceFxState.preset =
+                id.rekaminaja.app.recorder.VoicePreset.fromId(voicePresetIds[it])
+        }
+        addNote(lab, R.string.voice_preset_desc)
+        addSlider(lab, R.string.fx_intensity, 0, 100, Prefs.fxIntensity,
+            format = { getString(R.string.mic_volume_format, it) }) {
+            Prefs.fxIntensity = it
+            id.rekaminaja.app.recorder.VoiceFxState.intensity = it / 100f
+        }
+        addSlider(lab, R.string.mic_volume, 10, 200, Prefs.micVolume,
+            format = { getString(R.string.mic_volume_format, it) }) {
+            Prefs.micVolume = it
+            id.rekaminaja.app.recorder.VoiceFxState.micGain = it / 100f
+        }
         addNote(lab, R.string.fx_note_route)
 
         // ---- Perekaman ----

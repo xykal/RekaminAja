@@ -15,17 +15,17 @@ import kotlin.math.max
 /**
  * Whisper offline untuk subtitle bahasa Indonesia.
  *
- * Model base-q5_1 dibundel sebagai asset saat build, disalin sekali ke
+ * Model tiny-q5_1 dibundel sebagai asset saat build, disalin sekali ke
  * penyimpanan internal, lalu dipakai berulang. Proses berjalan per potongan
  * WAV agar video panjang tidak membebani RAM dan UI dapat memberi progres.
  */
 object WhisperSubtitleEngine {
 
-    private const val MODEL_FILE_NAME = "ggml-base-q5_1.bin"
+    private const val MODEL_FILE_NAME = "ggml-tiny-q5_1.bin"
     private const val MODEL_ASSET_PATH = "models/$MODEL_FILE_NAME"
-    private const val MODEL_EXPECTED_SIZE = 59_707_625L
+    private const val MODEL_EXPECTED_SIZE = 32_152_673L
     private const val MODEL_SHA256 =
-        "422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898"
+        "818710568da3ca15689e31a743197b520007872ff9576237bda97bd1b469c3d7"
 
     fun isSupportedDevice(): Boolean =
         Build.SUPPORTED_ABIS.any {
@@ -40,7 +40,14 @@ object WhisperSubtitleEngine {
         isCancelled: () -> Boolean,
         onProgress: (Int) -> Unit
     ): File {
-        val dir = File(context.filesDir, "whisper").apply { mkdirs() }
+        // v1.2: salinan model tinggal di cacheDir (dihitung sebagai cache,
+        // dapat dibersihkan sistem/pengguna) agar data aplikasi tidak
+        // membengkak permanen. Salinan model lama dari v1.1 dibuang.
+        try {
+            File(context.filesDir, "whisper").deleteRecursively()
+        } catch (e: Exception) {
+        }
+        val dir = File(context.cacheDir, "whisper").apply { mkdirs() }
         val target = File(dir, MODEL_FILE_NAME)
         val marker = File(dir, "$MODEL_FILE_NAME.ok")
         val markerOk = try {
@@ -118,6 +125,7 @@ object WhisperSubtitleEngine {
                 val model = Whisper.loadModel(context.applicationContext, modelFile.absolutePath)
                 try {
                     chunks.forEachIndexed { index, chunk ->
+                      try {
                         if (isCancelled()) throw SubtitleCancelledException()
                         // Potongan yang praktis hening dilewati agar Whisper tidak
                         // mengarang teks dari musik/noise yang sangat lemah.
@@ -153,6 +161,14 @@ object WhisperSubtitleEngine {
                             }
                         }
                         onProgress(index + 1, chunks.size)
+                      } finally {
+                        // WAV potongan langsung dibuang agar cache transkripsi
+                        // video panjang tidak menumpuk sampai ratusan MB.
+                        try {
+                            chunk.file.delete()
+                        } catch (e: Exception) {
+                        }
+                      }
                     }
                 } finally {
                     Whisper.releaseModel(model)

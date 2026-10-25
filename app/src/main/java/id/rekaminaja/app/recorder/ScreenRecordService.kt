@@ -123,6 +123,8 @@ class ScreenRecordService : Service() {
             ACTION_TOGGLE_PAUSE -> togglePause()
             ACTION_TOGGLE_FACECAM -> toggleFacecam()
             ACTION_TOGGLE_SHIELD -> toggleShield()
+            ACTION_MIC_VOL_UP -> adjustMicVolume(+10)
+            ACTION_MIC_VOL_DOWN -> adjustMicVolume(-10)
             else -> {
                 // Perintah tak dikenal: jangan biarkan service zombie.
                 if (!RecorderState.isRecording) stopSelf()
@@ -195,18 +197,26 @@ class ScreenRecordService : Service() {
 
             val audio = audioOverride ?: Prefs.audioSource
             activeAudioSource = audio
+            // Sinkronkan Deck Efek Suara sebelum engine dibuat. MicDsp membaca
+            // VoiceFxState agar preset/volume bisa diganti live dari floating.
+            VoiceFxState.sync(Prefs.voicePreset, Prefs.fxIntensity, Prefs.micVolume)
             val wantInternal = audio == Prefs.AUDIO_INTERNAL || audio == Prefs.AUDIO_MIX
-            // Mic dengan efek podcast aktif wajib lewat jalur codec (PCM bisa diproses).
-            val wantMicCodec = audio == Prefs.AUDIO_MIC && Prefs.anyAudioFx
+            // Mic dengan preset/volume/efek aktif wajib lewat jalur codec (PCM
+            // bisa diproses). Normal + 100% + semua efek mati tetap MediaRecorder.
+            val wantMic = audio == Prefs.AUDIO_MIX || audio == Prefs.AUDIO_MIC
+            val wantMicCodec = audio == Prefs.AUDIO_MIC && Prefs.micFxActive
             var eng: RecorderEngine
             var surface: android.view.Surface
             if ((wantInternal && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) || wantMicCodec) {
                 val codecEngine = CodecRecorderEngine(
                     proj, file, capture.width, capture.height, fps, bitrate,
                     includeInternal = wantInternal,
-                    includeMic = audio == Prefs.AUDIO_MIX || audio == Prefs.AUDIO_MIC,
+                    includeMic = wantMic,
                     fxNoiseSystem = Prefs.fxNoiseSystem,
-                    dsp = if (Prefs.fxGate || Prefs.fxCompressor) {
+                    // Selalu pasang DSP bila ada mic di jalur codec, supaya
+                    // volume mic + preset bisa diubah live (Normal = nyaris
+                    // lolos apa adanya).
+                    dsp = if (wantMic) {
                         MicDsp(44_100, Prefs.fxGate, Prefs.fxCompressor, Prefs.fxGainDb)
                     } else {
                         null
@@ -243,6 +253,7 @@ class ScreenRecordService : Service() {
                 eng = mr
             }
             engine = eng
+            RecorderState.fxLive = eng is CodecRecorderEngine && wantMic
             virtualDisplay = proj.createVirtualDisplay(
                 "RekaminAja", capture.width, capture.height, dpi,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
@@ -378,6 +389,13 @@ class ScreenRecordService : Service() {
         }
     }
 
+    /** Volume mic dari tombol notifikasi: tersimpan + berlaku live via DSP. */
+    private fun adjustMicVolume(deltaPercent: Int) {
+        Prefs.micVolume = Prefs.micVolume + deltaPercent
+        VoiceFxState.micGain = Prefs.micVolume / 100f
+        if (RecorderState.isRecording) updateNotification()
+    }
+
     private fun toggleFacecam() {
         mainHandler.post {
             if (facecam.isShowing) {
@@ -499,6 +517,39 @@ class ScreenRecordService : Service() {
         val pausedNow = state == RecorderState.State.PAUSED
         val pauseLabel = if (pausedNow) getString(R.string.resume) else getString(R.string.pause)
         val pauseIcon = if (pausedNow) R.drawable.ic_notif_play else R.drawable.ic_notif_pause
+        val volDownIntent = PendingIntent.getService(
+            this, 4,
+            Intent(this, ScreenRecordService::class.java).setAction(ACTION_MIC_VOL_DOWN),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val volUpIntent = PendingIntent.getService(
+            this, 5,
+            Intent(this, ScreenRecordService::class.java).setAction(ACTION_MIC_VOL_UP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Kartu notifikasi custom (Light Clean): status + timer, jeda/stop,
+        // dan pengatur volume mic langsung dari notifikasi yang diperluas.
+        fun fillCustom(layoutRes: Int): android.widget.RemoteViews {
+            val v = android.widget.RemoteViews(packageName, layoutRes)
+            v.setTextViewText(R.id.notif_title, title)
+            v.setTextViewText(R.id.notif_timer, text)
+            v.setImageViewResource(R.id.notif_pause, pauseIcon)
+            v.setContentDescription(R.id.notif_pause, pauseLabel)
+            v.setOnClickPendingIntent(R.id.notif_pause, pauseIntent)
+            v.setOnClickPendingIntent(R.id.notif_stop, stopIntent)
+            return v
+        }
+        val collapsed = fillCustom(R.layout.notification_recording)
+        val big = fillCustom(R.layout.notification_recording_big).apply {
+            setTextViewText(
+                R.id.notif_mic_percent,
+                getString(R.string.mic_volume_format, Prefs.micVolume)
+            )
+            setOnClickPendingIntent(R.id.notif_vol_down, volDownIntent)
+            setOnClickPendingIntent(R.id.notif_vol_up, volUpIntent)
+        }
+
         return NotificationCompat.Builder(this, RekaminApp.CHANNEL_RECORDING)
             .setSmallIcon(R.drawable.ic_record)
             .setContentTitle(title)
@@ -507,6 +558,10 @@ class ScreenRecordService : Service() {
             .setOnlyAlertOnce(true)
             .setContentIntent(openApp)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .setCustomContentView(collapsed)
+            .setCustomBigContentView(big)
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+            // Aksi teks tetap disediakan untuk permukaan lain (lock screen dll).
             .addAction(pauseIcon, pauseLabel, pauseIntent)
             .addAction(R.drawable.ic_notif_stop, getString(R.string.stop), stopIntent)
             .build()
@@ -640,6 +695,8 @@ class ScreenRecordService : Service() {
         const val ACTION_TOGGLE_PAUSE = "id.rekaminaja.app.recorder.TOGGLE_PAUSE"
         const val ACTION_TOGGLE_FACECAM = "id.rekaminaja.app.recorder.TOGGLE_FACECAM"
         const val ACTION_TOGGLE_SHIELD = "id.rekaminaja.app.recorder.TOGGLE_SHIELD"
+        const val ACTION_MIC_VOL_UP = "id.rekaminaja.app.recorder.MIC_VOL_UP"
+        const val ACTION_MIC_VOL_DOWN = "id.rekaminaja.app.recorder.MIC_VOL_DOWN"
         const val EXTRA_RESULT_CODE = "result_code"
         const val EXTRA_DATA = "data"
         const val EXTRA_AUDIO_OVERRIDE = "audio_override"
