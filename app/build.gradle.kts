@@ -19,6 +19,13 @@ val keystoreProps = Properties().apply {
 fun signingValue(key: String): String? =
     keystoreProps.getProperty(key) ?: System.getenv("REKAMIN_" + key.uppercase())
 
+// AGP cannot create an AAB in the same configuration whose APK outputs use
+// ABI splits and resource shrinking. Release/CI therefore build the AAB in a
+// separate invocation with -Prekamin.abiSplits=false.
+val rekaminAbiSplitsEnabled = providers.gradleProperty("rekamin.abiSplits")
+    .map { it.toBoolean() }
+    .getOrElse(true)
+
 android {
     namespace = "id.rekaminaja.app"
     // compileSdk 37 = Android 17 (terbaru 2026). targetSdk 36 = syarat Google Play
@@ -55,7 +62,7 @@ android {
     // armeabi-v7a. Universal output dipakai untuk edisi Lite.
     splits {
         abi {
-            isEnable = true
+            isEnable = rekaminAbiSplitsEnabled
             reset()
             include("arm64-v8a", "armeabi-v7a")
             isUniversalApk = true

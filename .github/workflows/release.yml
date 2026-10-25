@@ -61,10 +61,10 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      - name: Build Full + Lite release APKs and Full AAB
-        run: ./gradlew :app:assembleFullRelease :app:assembleLiteRelease :app:bundleFullRelease --stacktrace --console=plain
+      - name: Build Full + Lite release APKs
+        run: ./gradlew :app:assembleFullRelease :app:assembleLiteRelease --stacktrace --console=plain
 
-      - name: Collect artifacts
+      - name: Collect APK artifacts
         shell: bash
         run: |
           set -e
@@ -74,14 +74,27 @@ jobs:
           FULL_ARM64_APK=$(find app/build/outputs/apk/full/release -maxdepth 1 -name '*arm64-v8a*.apk' -print -quit)
           FULL_ARMEABI_APK=$(find app/build/outputs/apk/full/release -maxdepth 1 -name '*armeabi-v7a*.apk' -print -quit)
           LITE_APK=$(find app/build/outputs/apk/lite/release -maxdepth 1 -name '*universal*.apk' -print -quit)
-          FULL_AAB=$(find app/build/outputs/bundle/fullRelease -maxdepth 1 -name '*.aab' -print -quit)
           test -n "$FULL_ARM64_APK"
           test -n "$FULL_ARMEABI_APK"
           test -n "$LITE_APK"
-          test -n "$FULL_AAB"
           cp "$FULL_ARM64_APK" "dist/RekaminAja-${TAG}-full-arm64-v8a.apk"
           cp "$FULL_ARMEABI_APK" "dist/RekaminAja-${TAG}-full-armeabi-v7a.apk"
           cp "$LITE_APK" "dist/RekaminAja-${TAG}-lite-universal.apk"
+          ls -lh dist
+
+      # AGP cannot bundle while shrunk resources for multiple ABI-split APK
+      # outputs exist. Copy the APKs first, then build the AAB in a clean
+      # app-only invocation with APK splits disabled.
+      - name: Build Full AAB
+        run: ./gradlew :app:clean :app:bundleFullRelease -Prekamin.abiSplits=false --stacktrace --console=plain
+
+      - name: Collect AAB and checksums
+        shell: bash
+        run: |
+          set -e
+          TAG="${GITHUB_REF_NAME}"
+          FULL_AAB=$(find app/build/outputs/bundle/fullRelease -maxdepth 1 -name '*.aab' -print -quit)
+          test -n "$FULL_AAB"
           cp "$FULL_AAB" "dist/RekaminAja-${TAG}.aab"
           (cd dist && sha256sum *.apk *.aab > SHA256SUMS.txt)
           ls -lh dist

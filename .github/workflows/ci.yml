@@ -52,3 +52,9 @@ jobs:
           path: |
             app/build/outputs/apk/*/release/*.apk
           if-no-files-found: error
+
+      # AGP cannot bundle while shrunk resources for multiple ABI-split APK
+      # outputs exist. Upload first, then validate the AAB in a clean
+      # app-only invocation with APK splits disabled.
+      - name: Build Full AAB
+        run: ./gradlew :app:clean :app:bundleFullRelease -Prekamin.abiSplits=false --stacktrace
