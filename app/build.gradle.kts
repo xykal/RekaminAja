@@ -30,14 +30,14 @@ android {
         applicationId = "id.rekaminaja.app"
         minSdk = 24 // Android 7.0
         targetSdk = 36 // Android 16
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.1.1"
         vectorDrawables { useSupportLibrary = true }
     }
 
-    // Full = ARM64 dengan model Auto Subtitle. Lite = universal dan jauh lebih
-    // kecil untuk perangkat 32-bit/x86; semua fitur perekam tetap tersedia,
-    // hanya Auto Subtitle yang tidak aktif karena library Whisper ARM64-only.
+    // Full membawa Whisper lokal untuk ARM64 dan ARM 32-bit. Lite tetap
+    // universal dan jauh lebih kecil untuk x86 atau pengguna yang tidak
+    // memerlukan Auto Subtitle; semua fitur perekam lainnya tetap tersedia.
     flavorDimensions += "edition"
     productFlavors {
         create("full") {
@@ -45,6 +45,17 @@ android {
         }
         create("lite") {
             dimension = "edition"
+        }
+    }
+
+    // Rilis GitHub/APKPure menyediakan APK Full khusus arm64-v8a dan
+    // armeabi-v7a. Universal output dipakai untuk edisi Lite.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = true
         }
     }
 
@@ -95,7 +106,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.recyclerview)
     add("fullImplementation", libs.kotlinx.coroutines.android)
-    add("fullImplementation", libs.whisper.android)
+    add("fullImplementation", project(":whisper-android"))
 }
 
 // Model Auto Subtitle diunduh hanya di mesin build/CI lalu dibundel sebagai

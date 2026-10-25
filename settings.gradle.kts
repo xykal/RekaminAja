@@ -19,4 +19,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "RekaminAja"
-include(":app")
+include(":app", ":whisper-android")

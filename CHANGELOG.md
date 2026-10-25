@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.1 — 2026-10-25
+
+### Baru
+- **APK Full khusus `armeabi-v7a`**: perangkat ARM 32-bit kini mendapat edisi Full sendiri yang setara dengan `arm64-v8a`, termasuk Auto Subtitle offline
+- Library Whisper kini dibuild lokal dari source MIT Whisper Android 1.0.0 dan whisper.cpp v1.7.5 agar native library tersedia untuk `arm64-v8a` dan `armeabi-v7a`
+- Rilis kini menyediakan Full ARM64, Full armeabi-v7a, dan Lite Universal; Lite tetap menjadi pilihan kecil tanpa model subtitle untuk x86 atau pengguna yang tidak memerlukan Auto Subtitle
+
+### Catatan
+- Transkripsi pada perangkat ARM 32-bit lama akan lebih lambat dan bergantung pada RAM/CPU perangkat, tetapi perekaman tetap tidak dibebani karena subtitle dibuat setelah rekaman selesai
+
 ## 1.1.0 — 2026-10-24
 
 ### Baru

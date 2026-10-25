@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -29,8 +31,8 @@ jobs:
           set -x
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
-          "$SDKMANAGER" "platforms;android-37" "build-tools;37.0.0" "platform-tools" \
-            || "$SDKMANAGER" "platforms;android-37.0" "build-tools;37.0.0" "platform-tools" \
+          "$SDKMANAGER" "platforms;android-37" "build-tools;37.0.0" "platform-tools" "ndk;27.2.12479018" "cmake;3.22.1" \
+            || "$SDKMANAGER" "platforms;android-37.0" "build-tools;37.0.0" "platform-tools" "ndk;27.2.12479018" "cmake;3.22.1" \
             || true
 
       # Signing produksi dari GitHub Secrets (lihat docs/BUILD_RELEASE.md).
@@ -68,13 +70,17 @@ jobs:
           set -e
           mkdir -p dist
           TAG="${GITHUB_REF_NAME}"
-          FULL_APK=$(find app/build/outputs/apk/full/release -maxdepth 1 -name '*.apk' -print -quit)
-          LITE_APK=$(find app/build/outputs/apk/lite/release -maxdepth 1 -name '*.apk' -print -quit)
+          find app/build/outputs/apk -type f -name '*.apk' -print
+          FULL_ARM64_APK=$(find app/build/outputs/apk/full/release -maxdepth 1 -name '*arm64-v8a*.apk' -print -quit)
+          FULL_ARMEABI_APK=$(find app/build/outputs/apk/full/release -maxdepth 1 -name '*armeabi-v7a*.apk' -print -quit)
+          LITE_APK=$(find app/build/outputs/apk/lite/release -maxdepth 1 -name '*universal*.apk' -print -quit)
           FULL_AAB=$(find app/build/outputs/bundle/fullRelease -maxdepth 1 -name '*.aab' -print -quit)
-          test -n "$FULL_APK"
+          test -n "$FULL_ARM64_APK"
+          test -n "$FULL_ARMEABI_APK"
           test -n "$LITE_APK"
           test -n "$FULL_AAB"
-          cp "$FULL_APK" "dist/RekaminAja-${TAG}-full-arm64.apk"
+          cp "$FULL_ARM64_APK" "dist/RekaminAja-${TAG}-full-arm64-v8a.apk"
+          cp "$FULL_ARMEABI_APK" "dist/RekaminAja-${TAG}-full-armeabi-v7a.apk"
           cp "$LITE_APK" "dist/RekaminAja-${TAG}-lite-universal.apk"
           cp "$FULL_AAB" "dist/RekaminAja-${TAG}.aab"
           (cd dist && sha256sum *.apk *.aab > SHA256SUMS.txt)
@@ -90,10 +96,21 @@ jobs:
             "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs "$APK"
             "$ANDROID_HOME/build-tools/37.0.0/aapt2" dump badging "$APK" | head -30
           done
-          FULL_APK=$(ls dist/*-full-arm64.apk)
+          FULL_ARM64_APK=$(ls dist/*-full-arm64-v8a.apk)
+          FULL_ARMEABI_APK=$(ls dist/*-full-armeabi-v7a.apk)
           LITE_APK=$(ls dist/*-lite-universal.apk)
-          unzip -l "$FULL_APK" | grep -q 'assets/models/ggml-base-q5_1.bin'
-          unzip -l "$FULL_APK" | grep -q 'lib/arm64-v8a/libwhisper.so'
+          unzip -l "$FULL_ARM64_APK" | grep -q 'assets/models/ggml-base-q5_1.bin'
+          unzip -l "$FULL_ARM64_APK" | grep -q 'lib/arm64-v8a/libwhisper.so'
+          unzip -l "$FULL_ARMEABI_APK" | grep -q 'assets/models/ggml-base-q5_1.bin'
+          unzip -l "$FULL_ARMEABI_APK" | grep -q 'lib/armeabi-v7a/libwhisper.so'
+          if unzip -l "$FULL_ARM64_APK" | grep -q 'lib/armeabi-v7a/libwhisper.so'; then
+            echo "ARM64 APK must not contain the armeabi-v7a Whisper library" >&2
+            exit 1
+          fi
+          if unzip -l "$FULL_ARMEABI_APK" | grep -q 'lib/arm64-v8a/libwhisper.so'; then
+            echo "armeabi-v7a APK must not contain the ARM64 Whisper library" >&2
+            exit 1
+          fi
           if unzip -l "$LITE_APK" | grep -Eq 'assets/models/ggml-base-q5_1.bin|libwhisper.so'; then
             echo "Lite APK must not contain the Whisper model or native library" >&2
             exit 1
@@ -115,8 +132,9 @@ jobs:
 
           ## Download guide
 
-          - `RekaminAja-...-full-arm64.apk` is recommended for almost all modern Android phones. It includes offline Auto Subtitle with the bundled speech model.
-          - `RekaminAja-...-lite-universal.apk` is the small universal edition for older 32-bit and x86 devices. All recorder features are included except Auto Subtitle.
+          - `RekaminAja-...-full-arm64-v8a.apk` is for modern 64-bit ARM phones and includes offline Auto Subtitle.
+          - `RekaminAja-...-full-armeabi-v7a.apk` is for older 32-bit ARM phones and also includes offline Auto Subtitle. Transcription will be slower on legacy hardware.
+          - `RekaminAja-...-lite-universal.apk` is the small universal edition for x86 devices or users who do not need Auto Subtitle. All other recorder features are included.
           - The `.aab` file is for app stores and does not need to be installed manually.
           EOF
           cat release-notes.md

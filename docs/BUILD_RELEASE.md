@@ -11,15 +11,16 @@ git push origin v1.0.0
 ```
 
 Workflow [`Release`](../.github/workflows/release.yml) akan:
-1. Setup JDK 17 + Android SDK API 37
+1. Checkout termasuk submodule, lalu setup JDK 17, Android SDK API 37, NDK, dan CMake
 2. Membaca keystore dari GitHub Secrets (jika ada)
-3. Build APK Full ARM64, APK Lite Universal, dan AAB Full
-4. Menerbitkan **GitHub Release** berisi kedua APK, satu `.aab`, dan `SHA256SUMS.txt`
+3. Build APK Full ARM64, APK Full armeabi-v7a, APK Lite Universal, dan AAB Full
+4. Menerbitkan **GitHub Release** berisi ketiga APK, satu `.aab`, dan `SHA256SUMS.txt`
 
 Saat build edisi Full, task Gradle `downloadWhisperModel` mengunduh model Auto
 Subtitle dari revisi Hugging Face yang terpaku, memverifikasi ukuran dan SHA-256,
 lalu membundelnya sebagai asset. Unduhan ini hanya terjadi di mesin build/CI;
 aplikasi tetap tidak memiliki izin INTERNET dan model biner tidak disimpan di Git.
+Native Whisper dibuild lokal dari source terpaku untuk ARM64 dan armeabi-v7a.
 Edisi Full jauh lebih besar daripada v1.0, sedangkan Lite Universal tetap kecil
 karena tidak membawa model maupun library native Whisper.
 
@@ -78,7 +79,7 @@ rilisan awal sebelum Google Play ($25 sekali bayar).
 - [ ] Uji APK Release di perangkat beneran:
   - [ ] Rekam mode mic / internal / internal+mic / senyap
   - [ ] Audio Lab: preset Off/Natural/Podcast/Studio di mode mic dan internal+mic; bandingkan kebisingan latar dan kejernihan suara
-  - [ ] Auto Subtitle pada APK Full di perangkat ARM 64-bit: rekaman mic berbahasa Indonesia pendek dan panjang, mode pesawat aktif, pembatalan proses, tampilan subtitle di player, bagikan/buat ulang SRT, serta pesan untuk rekaman internal murni; uji juga APK Lite dapat dipasang dan menampilkan pesan edisi yang benar
+  - [ ] Auto Subtitle pada APK Full ARM64 dan armeabi-v7a: rekaman mic berbahasa Indonesia pendek dan panjang, mode pesawat aktif, pembatalan proses, tampilan subtitle di player, bagikan/buat ulang SRT, serta pesan untuk rekaman internal murni; catat kecepatan/RAM pada perangkat 32-bit dan uji APK Lite menampilkan pesan edisi yang benar
   - [ ] Pause/resume, rotasi layar saat merekam, rekaman > 10 menit
   - [ ] Bola melayang, facecam, zona sensor, auto-pause app sensitif
   - [ ] Screenshot, galeri, trim, share
@@ -88,7 +89,7 @@ rilisan awal sebelum Google Play ($25 sekali bayar).
   - Screenshot minimal 3 (portrait), bisa diambil dengan RekaminAja sendiri
   - Deskripsi singkat & lengkap (ambil dari README), kategori: Video Players & Editors / Tools
   - URL Privacy Policy: pakai tautan `PRIVACY_POLICY.md` di repo GitHub
-- [ ] Upload APK Full ARM64 yang sama persis dari GitHub Release (jangan rebuild lokal); tautkan APK Lite Universal untuk perangkat lama bila kanal distribusi mendukungnya
+- [ ] Upload APK Full sesuai arsitektur yang sama persis dari GitHub Release (jangan rebuild lokal); tautkan Full armeabi-v7a dan Lite Universal bila kanal distribusi mendukung banyak APK
 
 ## 4. Naik versi
 

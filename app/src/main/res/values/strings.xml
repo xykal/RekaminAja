@@ -168,8 +168,8 @@
     <string name="subtitle_no_audio">This video has no audio track</string>
     <string name="subtitle_no_voice">No clear human voice was detected</string>
     <string name="subtitle_not_mic">Auto Subtitle is only for microphone or human-voice recordings</string>
-    <string name="subtitle_unsupported_device">Auto Subtitle needs a 64-bit ARM device</string>
-    <string name="subtitle_unsupported_edition">Auto Subtitle is not included in the Universal Lite edition. Install the ARM64 Full edition to use it.</string>
+    <string name="subtitle_unsupported_device">Auto Subtitle needs an ARM device using the Full edition</string>
+    <string name="subtitle_unsupported_edition">Auto Subtitle is not included in the Universal Lite edition. Install the Full ARM edition for your device to use it.</string>
     <string name="subtitle_model_missing">The bundled speech model is missing from this build</string>
     <string name="subtitle_busy">Another subtitle is still being created</string>
     <string name="subtitle_cancelled">Subtitle creation cancelled</string>

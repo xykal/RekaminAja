@@ -7,12 +7,15 @@ RekaminAja uses the following open-source components for offline Auto Subtitle.
 - Project: https://github.com/ffmpegkit-maintained/whisper
 - Copyright (c) 2026 Jokobee (Luc Côté)
 - License: MIT
+- RekaminAja builds the v1.0.0 sources locally with an added
+  `armeabi-v7a` native target.
 
 ## whisper.cpp
 
 - Project: https://github.com/ggml-org/whisper.cpp
 - Copyright (c) 2023-2026 The ggml authors
 - License: MIT
+- Version: v1.7.5
 
 ## OpenAI Whisper model
 

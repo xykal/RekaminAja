@@ -16,10 +16,12 @@ Status build dan rilis terbaru tersedia di
 Ambil APK terbaru di halaman [Releases](https://github.com/xykal/RekaminAja/releases),
 lalu install seperti biasa:
 
-- `RekaminAja-vX.Y.Z-full-arm64.apk` — pilihan utama untuk hampir semua HP Android
-  modern, termasuk Auto Subtitle offline dan model suaranya.
-- `RekaminAja-vX.Y.Z-lite-universal.apk` — edisi kecil universal untuk perangkat
-  32-bit/x86 yang lebih lama. Semua fitur perekam tersedia, kecuali Auto Subtitle.
+- `RekaminAja-vX.Y.Z-full-arm64-v8a.apk` — untuk HP ARM 64-bit modern, termasuk
+  Auto Subtitle offline dan model suaranya.
+- `RekaminAja-vX.Y.Z-full-armeabi-v7a.apk` — untuk HP ARM 32-bit lama, juga
+  termasuk Auto Subtitle offline. Transkripsi akan lebih lambat di hardware lama.
+- `RekaminAja-vX.Y.Z-lite-universal.apk` — edisi kecil universal untuk x86 atau
+  pengguna yang tidak memerlukan Auto Subtitle.
 
 Rencana distribusi: APKPure terlebih dahulu, Google Play menyusul.
 
@@ -76,14 +78,15 @@ mengizinkan.
 
 Fitur ini memang berjalan **setelah perekaman**, bukan saat merekam, agar perekaman
 tetap ringan dan mulus. Transkripsi memakai Whisper multilingual yang berjalan lokal
-dengan model terkuantisasi yang dibundel di edisi Full ARM64. Tidak ada audio yang
-diunggah dan aplikasi tetap tidak memiliki izin INTERNET.
+dengan model terkuantisasi yang dibundel di edisi Full ARM64 dan armeabi-v7a. Tidak
+ada audio yang diunggah dan aplikasi tetap tidak memiliki izin INTERNET.
 
 Auto Subtitle ditujukan untuk rekaman mikrofon atau internal + mikrofon yang berisi
 suara manusia. Rekaman yang diketahui hanya memakai audio internal atau tanpa suara
 tidak perlu dibuatkan subtitle. Untuk video lama yang sumber audionya tidak diketahui,
-aplikasi memeriksa keberadaan suara sebelum memprosesnya. Fitur ini memerlukan prosesor
-64-bit ARM; ketepatan hasil bergantung pada kejernihan suara dan kebisingan latar.
+aplikasi memeriksa keberadaan suara sebelum memprosesnya. Perangkat ARM 32-bit lama
+akan memproses lebih lambat; ketepatan hasil bergantung pada kejernihan suara dan
+kebisingan latar.
 
 ## Cara kerja Privacy Shield
 
@@ -104,7 +107,7 @@ perilaku ini alih-alih melawannya:
 - Native Kotlin: AGP 9.4.1 (Built-in Kotlin), Gradle 9.6.0, JDK 17
 - `minSdk 24` (Android 7.0), `targetSdk 36` (Android 16), `compileSdk 37` (Android 17)
 - Dependency utama: AndroidX Core, AppCompat, Material, RecyclerView, Kotlin Coroutines,
-  dan Whisper Android untuk transkripsi lokal
+  dan modul Whisper Android lokal untuk transkripsi ARM64/armeabi-v7a
 - `ScreenRecordService` (foreground service `mediaProjection|microphone|camera`)
   mengikuti aturan Android 14+: FGS dimulai dulu, lalu `registerCallback()`,
   lalu `createVirtualDisplay()`
@@ -124,10 +127,11 @@ perilaku ini alih-alih melawannya:
 
 ## Build dari source
 
-Butuh JDK 17, Android SDK API 37, dan Build-Tools 37.0.0.
+Butuh JDK 17, Android SDK API 37, Build-Tools 37.0.0, NDK 27.2.12479018,
+dan CMake 3.22.1 untuk native Whisper.
 
 ```bash
-git clone https://github.com/xykal/RekaminAja.git
+git clone --recurse-submodules https://github.com/xykal/RekaminAja.git
 cd RekaminAja
 ./gradlew assembleDebug     # APK debug
 ./gradlew assembleRelease   # APK release (butuh signing, lihat docs/BUILD_RELEASE.md)

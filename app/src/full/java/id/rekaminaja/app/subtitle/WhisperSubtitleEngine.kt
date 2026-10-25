@@ -28,7 +28,10 @@ object WhisperSubtitleEngine {
         "422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898"
 
     fun isSupportedDevice(): Boolean =
-        Build.SUPPORTED_ABIS.any { it.equals("arm64-v8a", ignoreCase = true) }
+        Build.SUPPORTED_ABIS.any {
+            it.equals("arm64-v8a", ignoreCase = true) ||
+                it.equals("armeabi-v7a", ignoreCase = true)
+        }
 
     fun unsupportedMessageRes(): Int = R.string.subtitle_unsupported_device
 
