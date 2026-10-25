@@ -25,6 +25,9 @@ android {
     // per 31 Agu 2026 + perilaku runtime paling stabil untuk MediaProjection.
     compileSdk = 37
     buildToolsVersion = "37.0.0"
+    // Samakan dengan modul Whisper agar AGP menemukan llvm-strip untuk
+    // membuang debug symbols dari native library pada APK release.
+    ndkVersion = "27.2.12479018"
 
     defaultConfig {
         applicationId = "id.rekaminaja.app"
