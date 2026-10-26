@@ -21,6 +21,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
 import android.os.Looper
+import android.util.Log
 import android.util.Size
 import android.view.Gravity
 import android.view.Surface
@@ -29,6 +30,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import id.rekaminaja.app.MainActivity
 import id.rekaminaja.app.R
 import id.rekaminaja.app.RekaminApp
@@ -982,6 +984,25 @@ class ScreenRecordService : Service() {
         nm.notify(NOTIF_ID, buildNotification())
     }
 
+    /**
+     * Intent notifikasi tidak boleh membawa URI `file://` ke proses lain.
+     * Di Android lama OutputStore mengembalikan URI file publik, jadi ubah
+     * ke URI FileProvider sebelum membuat PendingIntent.
+     */
+    private fun notificationContentUri(uri: android.net.Uri): android.net.Uri? {
+        if (uri.scheme != "file") return uri
+        return try {
+            FileProvider.getUriForFile(
+                this,
+                "$packageName.fileprovider",
+                File(uri.path ?: return null)
+            )
+        } catch (e: Exception) {
+            Log.w("ScreenRecordService", "Gagal membuat URI konten untuk notifikasi", e)
+            null
+        }
+    }
+
     private fun sendDoneNotification(uri: android.net.Uri?) {
         val nm = getSystemService(NotificationManager::class.java)
         val builder = NotificationCompat.Builder(this, RekaminApp.CHANNEL_DONE)
@@ -989,9 +1010,10 @@ class ScreenRecordService : Service() {
             .setContentTitle(getString(R.string.recording_saved))
             .setContentText(getString(R.string.tap_to_watch))
             .setAutoCancel(true)
-        if (uri != null) {
+        val contentUri = uri?.let { notificationContentUri(it) }
+        if (contentUri != null) {
             val view = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "video/*")
+                setDataAndType(contentUri, "video/*")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             builder.setContentIntent(
@@ -1006,9 +1028,11 @@ class ScreenRecordService : Service() {
 
     private fun sendScreenshotNotification(uri: android.net.Uri, thumbnail: Bitmap?) {
         try {
+            val contentUri = notificationContentUri(uri)
+                ?: throw IllegalStateException("URI screenshot tidak dapat dibagikan")
             val nm = getSystemService(NotificationManager::class.java)
             val viewIntent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "image/*")
+                setDataAndType(contentUri, "image/*")
                 addFlags(
                     Intent.FLAG_GRANT_READ_URI_PERMISSION or
                         Intent.FLAG_ACTIVITY_NEW_TASK
@@ -1022,7 +1046,7 @@ class ScreenRecordService : Service() {
             )
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "image/png"
-                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_STREAM, contentUri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             val chooser = Intent.createChooser(
@@ -1063,6 +1087,7 @@ class ScreenRecordService : Service() {
         } catch (e: Exception) {
             // File screenshot sudah tersimpan; kegagalan notifikasi tidak
             // boleh mengganggu rekaman yang sedang berjalan.
+            Log.w("ScreenRecordService", "Notifikasi screenshot gagal dibuat", e)
         } finally {
             if (thumbnail != null) {
                 mainHandler.postDelayed({ thumbnail.recycle() }, 5_000)

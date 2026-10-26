@@ -4,4 +4,6 @@
     <external-files-path name="pictures" path="Pictures/" />
     <files-path name="internal" path="." />
     <cache-path name="cache" path="." />
+    <external-path name="public_pictures" path="Pictures/RekaminAja/" />
+    <external-path name="public_movies" path="Movies/RekaminAja/" />
 </paths>
