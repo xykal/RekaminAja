@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.1 — 2026-10-25
+
+### Baru
+- **Bola melayang muncul otomatis** setiap kali aplikasi dibuka (bila pengaturan bola aktif dan izin overlay sudah diberikan), tanpa perlu mengetuk tile Bola terlebih dahulu
+- **Izin tangkapan layar cukup sekali per sesi**: selama bola melayang tampil, sesi MediaProjection disimpan sehingga rekaman berikutnya mulai seketika tanpa dialog izin Android lagi; notifikasi berubah menjadi mode "Siap merekam" dengan tombol Mulai dan Akhiri sesi; sesi berakhir saat bola disembunyikan atau izin dicabut dari sistem
+
+### Perbaikan
+- Memulai rekaman dari bola melayang **tidak lagi membuka tampilan aplikasi**: halaman izin kini berjalan di task terpisah dan transparan, sehingga dialog izin tampil di atas aplikasi yang sedang digunakan dan fokus kembali ke sana setelahnya
+- Bola melayang dikecilkan lagi dari 46dp menjadi **38dp**
+
+### Catatan
+- Build release tetap memakai **R8** (`minifyEnabled`) + shrink resources seperti versi-versi sebelumnya
+
 ## 1.2.0 — 2026-10-25
 
 ### Baru

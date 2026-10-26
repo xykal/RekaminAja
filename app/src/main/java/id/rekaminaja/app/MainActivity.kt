@@ -268,8 +268,25 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        autoShowBubble()
         updateUi()
         loadRecent()
+    }
+
+    /**
+     * Bola melayang langsung muncul setiap app dibuka (pengaturan bola aktif
+     * + izin overlay sudah diberikan), tanpa perlu mengetuk tile Bola dulu.
+     * onResume juga menutup kasus user baru pulang dari halaman izin overlay.
+     */
+    private fun autoShowBubble() {
+        if (!Prefs.floatingBubble || FloatingBubbleService.running) return
+        if (!Util.canOverlay(this)) return
+        try {
+            startService(Intent(this, FloatingBubbleService::class.java))
+            handler.postDelayed({ updateUi() }, 300)
+        } catch (e: Exception) {
+            // Batasan OEM: bola tetap bisa dinyalakan manual lewat tile Bola.
+        }
     }
 
     // ---------------------------------------------------------------- actions

@@ -83,6 +83,23 @@ class ConsentActivity : AppCompatActivity() {
     }
 
     private fun launchProjection() {
+        // Sesi tangkapan layar dari rekaman sebelumnya masih hidup (bola
+        // masih tampil): mulai langsung, tanpa dialog izin Android lagi dan
+        // tanpa membuka tampilan app. Sesi berakhir saat bola disembunyikan.
+        if (mode() == MODE_RECORD && RecorderState.projectionReady &&
+            !RecorderState.isRecording
+        ) {
+            val intent = android.content.Intent(this, ScreenRecordService::class.java)
+                .setAction(ScreenRecordService.ACTION_START)
+                .putExtra(ScreenRecordService.EXTRA_AUDIO_OVERRIDE, audioOverride)
+            try {
+                ContextCompat.startForegroundService(this, intent)
+            } catch (e: Exception) {
+                Toast.makeText(this, R.string.error_start_failed, Toast.LENGTH_LONG).show()
+            }
+            finish()
+            return
+        }
         try {
             val manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE)
                 as MediaProjectionManager

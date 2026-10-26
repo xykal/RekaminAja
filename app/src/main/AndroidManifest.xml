@@ -59,11 +59,17 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
+        <!-- Task sendiri (taskAffinity kosong + singleInstance) supaya dialog
+             izin tampil di atas app yang sedang dipakai user, bukan menarik
+             MainActivity ke depan ("kok masuk app"). -->
         <activity
             android:name=".ConsentActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:excludeFromRecents="true"
             android:exported="false"
+            android:launchMode="singleInstance"
+            android:noHistory="true"
+            android:taskAffinity=""
             android:theme="@style/Theme.RekaminAja.Translucent" />
 
         <activity

@@ -198,4 +198,9 @@
     <string name="bubble_remove_hint">Release to hide the bubble</string>
     <string name="subtitle_stage_transcribe_chunk">Transcribing part %1$d of %2$d</string>
     <string name="subtitle_elapsed_format">Elapsed %1$s</string>
+
+    <!-- v1.2.1 persistent projection session -->
+    <string name="notif_ready">Ready to record</string>
+    <string name="notif_ready_text">Tap Start on the floating bubble. Your screen-capture permission stays active while the bubble is shown, so you will not be asked again.</string>
+    <string name="end_session">End session</string>
 </resources>

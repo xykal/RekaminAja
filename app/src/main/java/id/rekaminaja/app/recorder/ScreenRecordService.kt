@@ -73,7 +73,14 @@ class ScreenRecordService : Service() {
     private val projectionCallback = object : MediaProjection.Callback() {
         override fun onStop() {
             // Direvokasi sistem/user (mis. dari notifikasi sistem Android 14+).
-            if (!stopping) stopRecording(fromProjection = true)
+            countdownCancelled = true
+            RecorderState.projectionReady = false
+            if (RecorderState.isRecording || RecorderState.state == RecorderState.State.COUNTDOWN) {
+                if (!stopping) stopRecording(fromProjection = true)
+            } else {
+                // Sesi siaga dicabut: bersihkan tanpa menyentuh file rekaman.
+                endSession(fromRevocation = true)
+            }
         }
     }
 
@@ -109,15 +116,25 @@ class ScreenRecordService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> handleStart(intent)
+            ACTION_END_SESSION -> {
+                // Bola disembunyikan / tombol Akhiri sesi: matikan izin tangkap
+                // yang disimpan. Saat sedang merekam, sesi berakhir otomatis
+                // begitu rekaman berhenti (lihat stopRecording).
+                if (!RecorderState.isRecording &&
+                    RecorderState.state != RecorderState.State.COUNTDOWN
+                ) {
+                    endSession()
+                }
+            }
             ACTION_STOP -> {
                 if (RecorderState.state == RecorderState.State.COUNTDOWN) {
                     countdownCancelled = true
                     hideCountdown()
-                    RecorderState.set(RecorderState.State.IDLE)
-                    stopForegroundCompat()
-                    stopSelf()
-                } else {
+                    returnToReadyOrStop()
+                } else if (RecorderState.isRecording) {
                     stopRecording()
+                } else {
+                    endSession()
                 }
             }
             ACTION_TOGGLE_PAUSE -> togglePause()
@@ -140,34 +157,64 @@ class ScreenRecordService : Service() {
         val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, 0)
         val data = dataExtra(intent)
         audioOverride = intent.getStringExtra(EXTRA_AUDIO_OVERRIDE)
-        if (resultCode == 0 || data == null) {
-            stopSelf()
+        val useStored = (resultCode == 0 || data == null) &&
+            projection != null && RecorderState.projectionReady
+        if (!useStored && (resultCode == 0 || data == null)) {
+            // Tidak ada token baru dan tidak ada sesi aktif: mulai harus
+            // lewat ConsentActivity. Jangan tinggalkan service zombie.
+            if (!RecorderState.projectionReady) stopSelf()
             return
         }
         stopping = false
         countdownCancelled = false
         RecorderState.set(RecorderState.State.COUNTDOWN)
-        // WAJIB foreground lebih dulu sebelum token dipakai.
+        // WAJIB foreground lebih dulu sebelum token dipakai. Pada sesi yang
+        // dipakai ulang, ini juga menyegarkan tipe foreground (mic/camera)
+        // mengikuti pengaturan audio sesi rekaman kali ini.
         startForegroundNow(buildNotification())
         maybeStartBubble()
 
         val seconds = Prefs.countdownSec
         if (seconds <= 0) {
-            executor.execute { beginRecord(resultCode, data) }
+            if (useStored) {
+                executor.execute { beginRecordWithStored() }
+            } else {
+                executor.execute { beginRecord(resultCode, data!!) }
+            }
         } else {
-            runCountdown(seconds, resultCode, data)
+            runCountdown(seconds, if (useStored) null else resultCode to data)
         }
     }
 
-    private fun runCountdown(remain: Int, resultCode: Int, data: Intent) {
+    private fun runCountdown(remain: Int, fresh: Pair<Int, Intent?>?) {
         if (countdownCancelled) return
         if (remain <= 0) {
             hideCountdown()
-            executor.execute { beginRecord(resultCode, data) }
+            if (fresh == null) {
+                executor.execute { beginRecordWithStored() }
+            } else {
+                val code = fresh.first
+                val data = fresh.second
+                if (data == null) {
+                    returnToReadyOrStop()
+                } else {
+                    executor.execute { beginRecord(code, data) }
+                }
+            }
             return
         }
         showCountdown(remain)
-        mainHandler.postDelayed({ runCountdown(remain - 1, resultCode, data) }, 1_000)
+        mainHandler.postDelayed({ runCountdown(remain - 1, fresh) }, 1_000)
+    }
+
+    /** Mulai rekam memakai sesi MediaProjection yang sudah diberikan izinnya. */
+    private fun beginRecordWithStored() {
+        val proj = projection
+        if (proj == null || !RecorderState.projectionReady) {
+            returnToReadyOrStop()
+            return
+        }
+        beginRecordInternal(proj, registerCallback = false)
     }
 
     private fun beginRecord(resultCode: Int, data: Intent) {
@@ -176,9 +223,25 @@ class ScreenRecordService : Service() {
                 as MediaProjectionManager
             val proj = manager.getMediaProjection(resultCode, data)
                 ?: throw IllegalStateException("MediaProjection null")
+            // Token segar menggantikan sesi lama: lepas yang lama dulu agar
+            // tidak ada dua MediaProjection hidup bersamaan.
+            if (projection != null && projection !== proj) releaseProjection()
             projection = proj
-            // WAJIB sebelum createVirtualDisplay (Android 14+).
-            proj.registerCallback(projectionCallback, workerHandler)
+            RecorderState.projectionReady = true
+            beginRecordInternal(proj, registerCallback = true)
+        } catch (e: Exception) {
+            toast(R.string.error_start_failed)
+            cleanupAfterFailedStart()
+        }
+    }
+
+    private fun beginRecordInternal(proj: MediaProjection, registerCallback: Boolean) {
+        try {
+            // WAJIB sebelum createVirtualDisplay (Android 14+). Sesi pakai
+            // ulang sudah terdaftar sejak pertama dibuat.
+            if (registerCallback) {
+                proj.registerCallback(projectionCallback, workerHandler)
+            }
 
             val display = Util.realDisplaySize(this)
             val capture = Util.scaledCaptureSize(display, Prefs.resolution)
@@ -280,6 +343,41 @@ class ScreenRecordService : Service() {
         }
     }
 
+    /**
+     * Kembali ke keadaan "siap merekam" bila sesi proyeksi masih hidup
+     * (notifikasi siaga + izin tetap aktif); bila tidak, matikan service.
+     */
+    private fun returnToReadyOrStop() {
+        RecorderState.set(RecorderState.State.IDLE)
+        if (projection != null && RecorderState.projectionReady) {
+            try {
+                startForegroundNow(buildNotification())
+            } catch (e: Exception) {
+                endSession()
+            }
+        } else {
+            stopForegroundCompat()
+            stopSelf()
+        }
+    }
+
+    /** Akhiri sesi tangkapan layar sepenuhnya (izin disimpan dilepas). */
+    private fun endSession(fromRevocation: Boolean = false) {
+        mainHandler.removeCallbacks(ticker)
+        mainHandler.removeCallbacks(sensitiveWatcher)
+        hideCountdown()
+        mainHandler.post {
+            shield.hideAll()
+            shieldOn = false
+            facecam.hide()
+        }
+        if (fromRevocation) releaseProjectionCallbacksOnly() else releaseProjection()
+        RecorderState.projectionReady = false
+        RecorderState.set(RecorderState.State.IDLE)
+        stopForegroundCompat()
+        stopSelf()
+    }
+
     private fun cleanupAfterFailedStart() {
         try {
             virtualDisplay?.release()
@@ -321,7 +419,14 @@ class ScreenRecordService : Service() {
                 false
             }
             engine = null
-            if (!fromProjection) releaseProjection() else releaseProjectionCallbacksOnly()
+            // Sesi persisten: selama bola melayang masih tampil, izin tangkap
+            // disimpan agar rekaman berikutnya mulai tanpa dialog izin lagi.
+            val keepSession = !fromProjection && projection != null &&
+                RecorderState.projectionReady && FloatingBubbleService.running
+            if (!keepSession) {
+                if (!fromProjection) releaseProjection() else releaseProjectionCallbacksOnly()
+                RecorderState.projectionReady = false
+            }
 
             val file = outputFile
             val name = outputName
@@ -343,8 +448,14 @@ class ScreenRecordService : Service() {
                 } else {
                     Toast.makeText(this, R.string.recording_failed, Toast.LENGTH_LONG).show()
                 }
-                stopForegroundCompat()
-                stopSelf()
+                if (keepSession) {
+                    // Tetap foreground dalam mode siap; rekaman berikutnya dari
+                    // bola mulai seketika tanpa masuk app / izin ulang.
+                    returnToReadyOrStop()
+                } else {
+                    stopForegroundCompat()
+                    stopSelf()
+                }
             }
         }
     }
@@ -359,6 +470,7 @@ class ScreenRecordService : Service() {
         } catch (e: Exception) {
         }
         projection = null
+        RecorderState.projectionReady = false
     }
 
     private fun releaseProjectionCallbacksOnly() {
@@ -367,6 +479,7 @@ class ScreenRecordService : Service() {
         } catch (e: Exception) {
         }
         projection = null
+        RecorderState.projectionReady = false
     }
 
     private fun togglePause() {
@@ -492,15 +605,23 @@ class ScreenRecordService : Service() {
 
     private fun buildNotification(): Notification {
         val state = RecorderState.state
-        val title = when (state) {
-            RecorderState.State.PAUSED -> getString(R.string.notif_paused)
-            RecorderState.State.COUNTDOWN -> getString(R.string.notif_preparing)
+        // Mode siaga sesi persisten: izin sudah aktif, belum merekam.
+        val ready = state == RecorderState.State.IDLE && RecorderState.projectionReady
+        val title = when {
+            ready -> getString(R.string.app_name)
+            state == RecorderState.State.PAUSED -> getString(R.string.notif_paused)
+            state == RecorderState.State.COUNTDOWN -> getString(R.string.notif_preparing)
             else -> getString(R.string.notif_recording)
         }
-        val text = if (RecorderState.isRecording) {
-            Util.formatDuration(RecorderState.elapsedMs())
+        val text = when {
+            ready -> getString(R.string.notif_ready_text)
+            RecorderState.isRecording -> Util.formatDuration(RecorderState.elapsedMs())
+            else -> getString(R.string.app_name)
+        }
+        val customTimerText = if (ready) {
+            getString(R.string.notif_ready)
         } else {
-            getString(R.string.app_name)
+            text
         }
         val openApp = PendingIntent.getActivity(
             this, 0,
@@ -520,8 +641,31 @@ class ScreenRecordService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val pausedNow = state == RecorderState.State.PAUSED
-        val pauseLabel = if (pausedNow) getString(R.string.resume) else getString(R.string.pause)
-        val pauseIcon = if (pausedNow) R.drawable.ic_notif_play else R.drawable.ic_notif_pause
+        // Di mode siaga, tombol utama menjadi Mulai dan tombol stop menjadi
+        // Akhiri sesi (melepas izin tangkap yang disimpan).
+        val startIntent = PendingIntent.getService(
+            this, 6,
+            Intent(this, ScreenRecordService::class.java).setAction(ACTION_START),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val endSessionIntent = PendingIntent.getService(
+            this, 7,
+            Intent(this, ScreenRecordService::class.java).setAction(ACTION_END_SESSION),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val primaryIntent = if (ready) startIntent else pauseIntent
+        val secondaryIntent = if (ready) endSessionIntent else stopIntent
+        val pauseLabel = when {
+            ready -> getString(R.string.start_recording)
+            pausedNow -> getString(R.string.resume)
+            else -> getString(R.string.pause)
+        }
+        val stopLabel = if (ready) getString(R.string.end_session) else getString(R.string.stop)
+        val pauseIcon = if (ready || pausedNow) {
+            R.drawable.ic_notif_play
+        } else {
+            R.drawable.ic_notif_pause
+        }
         val volDownIntent = PendingIntent.getService(
             this, 4,
             Intent(this, ScreenRecordService::class.java).setAction(ACTION_MIC_VOL_DOWN),
@@ -538,11 +682,12 @@ class ScreenRecordService : Service() {
         fun fillCustom(layoutRes: Int): android.widget.RemoteViews {
             val v = android.widget.RemoteViews(packageName, layoutRes)
             v.setTextViewText(R.id.notif_title, title)
-            v.setTextViewText(R.id.notif_timer, text)
+            v.setTextViewText(R.id.notif_timer, customTimerText)
             v.setImageViewResource(R.id.notif_pause, pauseIcon)
             v.setContentDescription(R.id.notif_pause, pauseLabel)
-            v.setOnClickPendingIntent(R.id.notif_pause, pauseIntent)
-            v.setOnClickPendingIntent(R.id.notif_stop, stopIntent)
+            v.setContentDescription(R.id.notif_stop, stopLabel)
+            v.setOnClickPendingIntent(R.id.notif_pause, primaryIntent)
+            v.setOnClickPendingIntent(R.id.notif_stop, secondaryIntent)
             return v
         }
         val collapsed = fillCustom(R.layout.notification_recording)
@@ -567,8 +712,8 @@ class ScreenRecordService : Service() {
             .setCustomBigContentView(big)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             // Aksi teks tetap disediakan untuk permukaan lain (lock screen dll).
-            .addAction(pauseIcon, pauseLabel, pauseIntent)
-            .addAction(R.drawable.ic_notif_stop, getString(R.string.stop), stopIntent)
+            .addAction(pauseIcon, pauseLabel, primaryIntent)
+            .addAction(R.drawable.ic_notif_stop, stopLabel, secondaryIntent)
             .build()
     }
 
@@ -697,6 +842,7 @@ class ScreenRecordService : Service() {
     companion object {
         const val ACTION_START = "id.rekaminaja.app.recorder.START"
         const val ACTION_STOP = "id.rekaminaja.app.recorder.STOP"
+        const val ACTION_END_SESSION = "id.rekaminaja.app.recorder.END_SESSION"
         const val ACTION_TOGGLE_PAUSE = "id.rekaminaja.app.recorder.TOGGLE_PAUSE"
         const val ACTION_TOGGLE_FACECAM = "id.rekaminaja.app.recorder.TOGGLE_FACECAM"
         const val ACTION_TOGGLE_SHIELD = "id.rekaminaja.app.recorder.TOGGLE_SHIELD"

@@ -40,7 +40,7 @@ import kotlin.math.hypot
 
 /**
  * Bola melayang RekaminAja ala XRecorder:
- * - kecil (46dp) dan selalu menempel di tepi kiri/kanan (snap beranimasi),
+ * - kecil (38dp) dan selalu menempel di tepi kiri/kanan (snap beranimasi),
  * - seret ke lingkaran hapus di bawah-tengah untuk menyembunyikan bola,
  * - panel deck berisi aksi bulat, Deck Efek Suara (preset + intensitas),
  *   serta pengatur volume mic dan volume HP.
@@ -88,6 +88,20 @@ class FloatingBubbleService : Service() {
     }
 
     override fun onDestroy() {
+        // Bola pergi = sesi izin tangkap selesai. Rekaman berikutnya akan
+        // meminta izin sekali lagi (lalu disimpan selama bola tampil).
+        if (!RecorderState.isRecording &&
+            RecorderState.state != RecorderState.State.COUNTDOWN &&
+            RecorderState.projectionReady
+        ) {
+            try {
+                startService(
+                    Intent(this, ScreenRecordService::class.java)
+                        .setAction(ScreenRecordService.ACTION_END_SESSION)
+                )
+            } catch (e: Exception) {
+            }
+        }
         handler.removeCallbacksAndMessages(null)
         snapAnimator?.cancel()
         removeView(bubble)
@@ -119,7 +133,7 @@ class FloatingBubbleService : Service() {
     // ---------------------------------------------------------------- bola
 
     private fun createBubble() {
-        val size = dp(46)
+        val size = dp(38)
         bubbleBg = GradientDrawable(
             GradientDrawable.Orientation.TL_BR,
             intArrayOf(Color.WHITE, color(R.color.bg_soft))
@@ -139,10 +153,10 @@ class FloatingBubbleService : Service() {
             setImageResource(R.drawable.ic_record)
             setColorFilter(color(R.color.brand))
         }
-        inner.addView(bubbleIcon, LinearLayout.LayoutParams(dp(19), dp(19)))
+        inner.addView(bubbleIcon, LinearLayout.LayoutParams(dp(15), dp(15)))
         bubbleTimer = TextView(this).apply {
             setTextColor(Color.WHITE)
-            textSize = 7.5f
+            textSize = 6.5f
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             gravity = Gravity.CENTER
             visibility = View.GONE
@@ -539,7 +553,13 @@ class FloatingBubbleService : Service() {
         } else {
             roundAction(actions, R.drawable.ic_record, getString(R.string.start_recording),
                 color(R.color.brand), Color.WHITE) {
-                openConsent(ConsentActivity.MODE_RECORD)
+                // Sesi izin masih hidup: rekam langsung dari sini tanpa
+                // membuka activity/dialog izin apa pun.
+                if (RecorderState.projectionReady) {
+                    sendRecorder(ScreenRecordService.ACTION_START)
+                } else {
+                    openConsent(ConsentActivity.MODE_RECORD)
+                }
             }
             roundAction(actions, R.drawable.ic_screenshot, getString(R.string.screenshot),
                 color(R.color.accent_blue_tint), color(R.color.accent_blue)) {
@@ -706,7 +726,7 @@ class FloatingBubbleService : Service() {
             LinearLayout.LayoutParams.MATCH_PARENT, scrollH
         )
         val bp = bubbleParams
-        val bubbleCx = (bp?.x ?: 0) + dp(23)
+        val bubbleCx = (bp?.x ?: 0) + dp(19)
         val panelX = if (bubbleCx < display.width / 2) {
             dp(8)
         } else {

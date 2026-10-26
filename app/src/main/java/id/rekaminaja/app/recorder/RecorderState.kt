@@ -25,6 +25,15 @@ object RecorderState {
     @Volatile
     var fxLive: Boolean = false
 
+    /**
+     * True bila sesi MediaProjection masih hidup (izin tangkapan sudah
+     * diberikan) sehingga rekaman berikutnya bisa mulai langsung tanpa
+     * dialog izin lagi. Sesi berakhir saat bola melayang disembunyikan,
+     * izin dicabut sistem, atau proses mati.
+     */
+    @Volatile
+    var projectionReady: Boolean = false
+
     private var startRealtime = 0L
     private var pausedAccumulated = 0L
     private var pauseStart = 0L

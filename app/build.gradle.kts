@@ -40,8 +40,8 @@ android {
         applicationId = "id.rekaminaja.app"
         minSdk = 24 // Android 7.0
         targetSdk = 36 // Android 16
-        versionCode = 4
-        versionName = "1.2.0"
+        versionCode = 5
+        versionName = "1.2.1"
         vectorDrawables { useSupportLibrary = true }
     }
 
