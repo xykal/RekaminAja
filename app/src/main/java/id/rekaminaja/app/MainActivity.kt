@@ -29,6 +29,7 @@ import id.rekaminaja.app.data.GalleryLoader
 import id.rekaminaja.app.data.Prefs
 import id.rekaminaja.app.overlay.DrawOverlayService
 import id.rekaminaja.app.overlay.FloatingBubbleService
+import id.rekaminaja.app.overlay.ScreenshotBubbleService
 import id.rekaminaja.app.recorder.RecorderState
 import id.rekaminaja.app.recorder.ScreenRecordService
 import id.rekaminaja.app.ui.RecordButton
@@ -279,14 +280,25 @@ class MainActivity : AppCompatActivity() {
      * onResume juga menutup kasus user baru pulang dari halaman izin overlay.
      */
     private fun autoShowBubble() {
-        if (!Prefs.floatingBubble || FloatingBubbleService.running) return
         if (!Util.canOverlay(this)) return
-        try {
-            startService(Intent(this, FloatingBubbleService::class.java))
-            handler.postDelayed({ updateUi() }, 300)
-        } catch (e: Exception) {
-            // Batasan OEM: bola tetap bisa dinyalakan manual lewat tile Bola.
+        var startedAny = false
+        if (Prefs.floatingBubble && !FloatingBubbleService.running) {
+            try {
+                startService(Intent(this, FloatingBubbleService::class.java))
+                startedAny = true
+            } catch (e: Exception) {
+                // Batasan OEM: bola tetap bisa dinyalakan manual lewat tile Bola.
+            }
         }
+        if (Prefs.screenshotBubble && !ScreenshotBubbleService.running) {
+            try {
+                startService(Intent(this, ScreenshotBubbleService::class.java))
+                startedAny = true
+            } catch (e: Exception) {
+                // Bola screenshot akan dicoba lagi pada onResume berikutnya.
+            }
+        }
+        if (startedAny) handler.postDelayed({ updateUi() }, 300)
     }
 
     // ---------------------------------------------------------------- actions

@@ -74,6 +74,7 @@ class FloatingBubbleService : Service() {
     private var touchMoved = false
     private var touchActive = false
     private var longPressed = false
+    private var hiddenForScreenshot = false
 
     private val handler = Handler(Looper.getMainLooper())
     private val idleRunnable = Runnable { dockBubbleIdle() }
@@ -105,6 +106,7 @@ class FloatingBubbleService : Service() {
             return
         }
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        instance = this
         VoiceFxState.syncFromPrefs()
         createBubble()
         running = true
@@ -117,7 +119,8 @@ class FloatingBubbleService : Service() {
         // meminta izin sekali lagi (lalu disimpan selama bola tampil).
         if (!RecorderState.isRecording &&
             RecorderState.state != RecorderState.State.COUNTDOWN &&
-            RecorderState.projectionReady
+            RecorderState.projectionReady &&
+            !ScreenshotBubbleService.running
         ) {
             try {
                 startService(
@@ -130,11 +133,13 @@ class FloatingBubbleService : Service() {
         handler.removeCallbacksAndMessages(null)
         snapAnimator?.cancel()
         removeView(bubble)
+        removeTimerChip()
         removeView(panel)
         removeView(removeTarget)
         bubble = null
         panel = null
         removeTarget = null
+        if (instance === this) instance = null
         running = false
         super.onDestroy()
     }
@@ -593,7 +598,8 @@ class FloatingBubbleService : Service() {
 
     private fun updateBubbleVisual() {
         val state = RecorderState.state
-        val shouldHide = Prefs.hideBubbleWhileRecording && RecorderState.isRecording
+        val shouldHide = hiddenForScreenshot ||
+            (Prefs.hideBubbleWhileRecording && RecorderState.isRecording)
         if (shouldHide) {
             if (panel != null) closePanel()
             removeTimerChip()
@@ -1132,8 +1138,30 @@ class FloatingBubbleService : Service() {
         Toast.makeText(this, resId, Toast.LENGTH_SHORT).show()
     }
 
+    private fun applyHiddenForScreenshot(hidden: Boolean) {
+        hiddenForScreenshot = hidden
+        if (hidden) {
+            handler.removeCallbacks(idleRunnable)
+            snapAnimator?.cancel()
+            closePanel()
+            removeTimerChip()
+            bubble?.visibility = View.GONE
+        } else if (!(Prefs.hideBubbleWhileRecording && RecorderState.isRecording)) {
+            bubble?.visibility = View.VISIBLE
+            wakeBubble()
+        }
+    }
+
     companion object {
         @Volatile
         var running: Boolean = false
+
+        @Volatile
+        private var instance: FloatingBubbleService? = null
+
+        fun setHiddenForScreenshot(hidden: Boolean) {
+            val service = instance ?: return
+            service.handler.post { service.applyHiddenForScreenshot(hidden) }
+        }
     }
 }

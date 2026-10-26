@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.1 — 2026-10-26
+
+### Baru
+- **Bola screenshot khusus ala XRecorder**: tab kamera terpisah di tepi layar yang dapat diseret, menyelip saat idle, ketuk untuk screenshot, dan tekan-tahan untuk menyembunyikan
+- **Screenshot instan dengan sesi yang sama**: screenshot kini dikelola service tangkapan utama, sehingga setelah izin aktif dan salah satu bola masih tampil, screenshot berikutnya tidak meminta izin lagi
+
+### Perbaikan
+- Bola rekam, bola screenshot, dan chip timer disembunyikan sesaat saat frame ditangkap agar tidak ikut masuk hasil screenshot
+- Screenshot pada layar statis tidak lagi mudah timeout karena frame terbaru disimpan sebagai cadangan sampai waktunya disimpan ke Pictures/RekaminAja
+- Bola screenshot otomatis hilang selama countdown/rekaman agar tidak masuk video, lalu kembali setelah rekaman selesai
+
 ## 1.4.0 — 2026-10-26
 
 ### Baru

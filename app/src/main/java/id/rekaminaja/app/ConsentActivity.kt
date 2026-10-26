@@ -12,7 +12,6 @@ import androidx.core.content.ContextCompat
 import id.rekaminaja.app.data.Prefs
 import id.rekaminaja.app.recorder.RecorderState
 import id.rekaminaja.app.recorder.ScreenRecordService
-import id.rekaminaja.app.recorder.ScreenshotService
 
 /**
  * Activity transparan satu pintu untuk izin MediaProjection.
@@ -52,9 +51,10 @@ class ConsentActivity : AppCompatActivity() {
                     .putExtra(ScreenRecordService.EXTRA_AUDIO_OVERRIDE, audioOverride)
                 ContextCompat.startForegroundService(this, intent)
             } else {
-                val intent = android.content.Intent(this, ScreenshotService::class.java)
-                    .putExtra(ScreenshotService.EXTRA_RESULT_CODE, result.resultCode)
-                    .putExtra(ScreenshotService.EXTRA_DATA, data)
+                val intent = android.content.Intent(this, ScreenRecordService::class.java)
+                    .setAction(ScreenRecordService.ACTION_SCREENSHOT)
+                    .putExtra(ScreenRecordService.EXTRA_RESULT_CODE, result.resultCode)
+                    .putExtra(ScreenRecordService.EXTRA_DATA, data)
                 ContextCompat.startForegroundService(this, intent)
             }
         } else {
@@ -83,6 +83,24 @@ class ConsentActivity : AppCompatActivity() {
     }
 
     private fun launchProjection() {
+        if (mode() == MODE_SCREENSHOT) {
+            if (RecorderState.isRecording || RecorderState.state == RecorderState.State.COUNTDOWN) {
+                Toast.makeText(this, R.string.screenshot_while_recording, Toast.LENGTH_SHORT).show()
+                finish()
+                return
+            }
+            if (RecorderState.projectionReady) {
+                val intent = android.content.Intent(this, ScreenRecordService::class.java)
+                    .setAction(ScreenRecordService.ACTION_SCREENSHOT)
+                try {
+                    ContextCompat.startForegroundService(this, intent)
+                } catch (e: Exception) {
+                    Toast.makeText(this, R.string.screenshot_failed, Toast.LENGTH_SHORT).show()
+                }
+                finish()
+                return
+            }
+        }
         // Sesi tangkapan layar dari rekaman sebelumnya masih hidup (bola
         // masih tampil): mulai langsung, tanpa dialog izin Android lagi dan
         // tanpa membuka tampilan app. Sesi berakhir saat bola disembunyikan.

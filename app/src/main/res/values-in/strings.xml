@@ -237,4 +237,9 @@
     <string name="bubble_show_timer">Tampilkan chip waktu rekaman</string>
     <string name="bubble_show_timer_desc">Menampilkan pil waktu berjalan di samping bola selama merekam</string>
     <string name="bubble_customize_note">Ketuk untuk membuka toolbox. Tekan-tahan bola untuk mulai atau berhenti merekam dengan cepat. Seret ke tepi kiri/kanan, atau ke lingkaran hapus di bawah untuk menyembunyikannya.</string>
+
+    <!-- v1.4.1 dedicated screenshot ball -->
+    <string name="screenshot_bubble">Bola screenshot khusus</string>
+    <string name="screenshot_bubble_desc">Menampilkan tab kamera terpisah di tepi layar. Ketuk untuk screenshot instan setelah izin tangkapan aktif; tekan-tahan untuk menyembunyikannya.</string>
+    <string name="screenshot_bubble_hidden">Bola screenshot disembunyikan. Buka RekaminAja untuk menampilkannya lagi.</string>
 </resources>

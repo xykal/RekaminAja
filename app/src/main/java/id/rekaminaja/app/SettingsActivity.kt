@@ -233,6 +233,10 @@ class SettingsActivity : AppCompatActivity() {
             Prefs.floatingBubble = it
         }
         addToggle(
+            bubbleCard, R.string.screenshot_bubble, R.string.screenshot_bubble_desc,
+            Prefs.screenshotBubble
+        ) { Prefs.screenshotBubble = it }
+        addToggle(
             bubbleCard, R.string.bubble_edge_tuck, R.string.bubble_edge_tuck_desc,
             Prefs.bubbleEdgeTuck
         ) { Prefs.bubbleEdgeTuck = it }

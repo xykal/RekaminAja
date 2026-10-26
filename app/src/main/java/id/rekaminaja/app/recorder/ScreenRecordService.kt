@@ -33,6 +33,7 @@ import id.rekaminaja.app.data.Prefs
 import id.rekaminaja.app.overlay.FacecamController
 import id.rekaminaja.app.overlay.FloatingBubbleService
 import id.rekaminaja.app.overlay.OverlayUtil
+import id.rekaminaja.app.overlay.ScreenshotBubbleService
 import id.rekaminaja.app.overlay.PrivacyShieldController
 import id.rekaminaja.app.subtitle.SubtitleStore
 import id.rekaminaja.app.util.Util
@@ -56,6 +57,8 @@ class ScreenRecordService : Service() {
 
     private var projection: MediaProjection? = null
     private var virtualDisplay: VirtualDisplay? = null
+    private var screenshotCapturer: ScreenshotCapturer? = null
+    @Volatile private var screenshotInProgress = false
     private var engine: RecorderEngine? = null
     private var outputFile: File? = null
     private var outputName: String? = null
@@ -121,6 +124,7 @@ class ScreenRecordService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> handleStart(intent)
+            ACTION_SCREENSHOT -> handleScreenshot(intent)
             ACTION_END_SESSION -> {
                 // Bola disembunyikan / tombol Akhiri sesi: matikan izin tangkap
                 // yang disimpan. Saat sedang merekam, sesi berakhir otomatis
@@ -189,6 +193,84 @@ class ScreenRecordService : Service() {
         } else {
             runCountdown(seconds, if (useStored) null else resultCode to data)
         }
+    }
+
+    // ---------------------------------------------------------- screenshot
+
+    private fun handleScreenshot(intent: Intent) {
+        if (RecorderState.isRecording || RecorderState.state == RecorderState.State.COUNTDOWN) {
+            toast(R.string.screenshot_while_recording)
+            return
+        }
+        if (screenshotInProgress) return
+
+        val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, 0)
+        val data = dataExtra(intent)
+        val useStored = (resultCode == 0 || data == null) &&
+            projection != null && RecorderState.projectionReady
+        if (!useStored && (resultCode == 0 || data == null)) {
+            toast(R.string.screenshot_failed)
+            if (!RecorderState.projectionReady) stopSelf()
+            return
+        }
+
+        screenshotInProgress = true
+        // Token segar hanya boleh dipakai sesudah service foreground.
+        startForegroundNow(buildNotification())
+        executor.execute {
+            if (useStored) {
+                beginScreenshotWithStored()
+            } else {
+                beginScreenshotFresh(resultCode, data!!)
+            }
+        }
+    }
+
+    private fun beginScreenshotWithStored() {
+        val proj = projection
+        if (proj == null || !RecorderState.projectionReady) {
+            screenshotInProgress = false
+            toast(R.string.screenshot_failed)
+            returnToReadyOrStop()
+            return
+        }
+        startScreenshotCapture(proj)
+    }
+
+    private fun beginScreenshotFresh(resultCode: Int, data: Intent) {
+        try {
+            val manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE)
+                as MediaProjectionManager
+            val proj = manager.getMediaProjection(resultCode, data)
+                ?: throw IllegalStateException("MediaProjection null")
+            if (projection != null && projection !== proj) releaseProjection()
+            projection = proj
+            RecorderState.projectionReady = true
+            proj.registerCallback(projectionCallback, workerHandler)
+            startScreenshotCapture(proj)
+        } catch (e: Exception) {
+            screenshotInProgress = false
+            toast(R.string.screenshot_failed)
+            cleanupAfterFailedStart()
+        }
+    }
+
+    private fun startScreenshotCapture(proj: MediaProjection) {
+        val capturer = ScreenshotCapturer(this, proj, workerHandler) {
+            screenshotCapturer = null
+            screenshotInProgress = false
+            mainHandler.post {
+                // Pertahankan satu izin tangkapan selama salah satu bola
+                // masih tampil; screenshot/rekaman berikutnya jadi instan.
+                if (FloatingBubbleService.running || ScreenshotBubbleService.running) {
+                    returnToReadyOrStop()
+                } else {
+                    endSession()
+                }
+            }
+        }
+        screenshotCapturer = capturer
+        capturer.start()
     }
 
     private fun runCountdown(remain: Int, fresh: Pair<Int, Intent?>?) {
@@ -442,7 +524,8 @@ class ScreenRecordService : Service() {
             // Sesi persisten: selama bola melayang masih tampil, izin tangkap
             // disimpan agar rekaman berikutnya mulai tanpa dialog izin lagi.
             val keepSession = !fromProjection && projection != null &&
-                RecorderState.projectionReady && FloatingBubbleService.running
+                RecorderState.projectionReady &&
+                (FloatingBubbleService.running || ScreenshotBubbleService.running)
             if (!keepSession) {
                 if (!fromProjection) releaseProjection() else releaseProjectionCallbacksOnly()
                 RecorderState.projectionReady = false
@@ -842,6 +925,9 @@ class ScreenRecordService : Service() {
 
     override fun onDestroy() {
         mainHandler.removeCallbacksAndMessages(null)
+        screenshotCapturer?.cancel()
+        screenshotCapturer = null
+        screenshotInProgress = false
         try {
             virtualDisplay?.release()
         } catch (e: Exception) {
@@ -864,6 +950,7 @@ class ScreenRecordService : Service() {
 
     companion object {
         const val ACTION_START = "id.rekaminaja.app.recorder.START"
+        const val ACTION_SCREENSHOT = "id.rekaminaja.app.recorder.SCREENSHOT"
         const val ACTION_STOP = "id.rekaminaja.app.recorder.STOP"
         const val ACTION_END_SESSION = "id.rekaminaja.app.recorder.END_SESSION"
         const val ACTION_TOGGLE_PAUSE = "id.rekaminaja.app.recorder.TOGGLE_PAUSE"

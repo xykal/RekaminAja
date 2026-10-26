@@ -37,7 +37,7 @@ Rencana distribusi: APKPure terlebih dahulu, Google Play menyusul.
 | Auto Subtitle | Membuat subtitle SRT bahasa Indonesia dari suara mikrofon setelah perekaman selesai, sepenuhnya offline dengan model Whisper yang dibundel di APK |
 | Jeda dan lanjut | Termasuk kontrol dari notifikasi custom berisi timer, jeda/stop, dan pengatur volume mic |
 | Bola melayang | Bola gaya tab tepi yang setengahnya menyelip keluar layar saat diam; ukuran 34-56dp dan opasitas bisa diatur, chip waktu terpisah saat merekam, ketuk untuk toolbox, tekan-tahan untuk mulai/stop cepat, dan seret ke lingkaran hapus di bawah untuk menyembunyikan |
-| Screenshot | Sekali ketuk, tersimpan di Pictures/RekaminAja |
+| Screenshot | Bola kamera terpisah di tepi layar, screenshot instan selama sesi izin tangkapan aktif, kontrol RekaminAja disembunyikan sesaat agar tidak ikut terfoto, tersimpan di Pictures/RekaminAja |
 | Facecam | Overlay kamera bundar berbasis Camera2, bisa diseret, tekan-tahan untuk ganti kamera |
 | Gambar di layar | Kuas overlay; coretan ikut terekam, cocok untuk tutorial |
 | Zona Sensor | Kotak hitam yang diatur di editor dan digambar selama merekam, sehingga tersensor permanen di file video |

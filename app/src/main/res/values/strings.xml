@@ -237,4 +237,9 @@
     <string name="bubble_show_timer">Show recording time chip</string>
     <string name="bubble_show_timer_desc">Shows an elapsed-time pill beside the ball while recording</string>
     <string name="bubble_customize_note">Tap opens the toolbox. Long-press the ball to quickly start or stop recording. Drag it to either edge, or to the bottom remove circle to hide it.</string>
+
+    <!-- v1.4.1 dedicated screenshot ball -->
+    <string name="screenshot_bubble">Dedicated screenshot ball</string>
+    <string name="screenshot_bubble_desc">Shows a separate camera tab on the screen edge. Tap it for an instant screenshot after capture permission is active; long-press it to hide it.</string>
+    <string name="screenshot_bubble_hidden">Screenshot ball hidden. Open RekaminAja to show it again.</string>
 </resources>

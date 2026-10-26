@@ -142,6 +142,21 @@ object Prefs {
         get() = sp.getBoolean("bubble_show_timer", true)
         set(v) = sp.edit().putBoolean("bubble_show_timer", v).apply()
 
+    /** Bola screenshot terpisah ala XRecorder, independen dari bola rekam. */
+    var screenshotBubble: Boolean
+        get() = sp.getBoolean("screenshot_bubble", true)
+        set(v) = sp.edit().putBoolean("screenshot_bubble", v).apply()
+
+    /** 0 = kiri, 1 = kanan. */
+    var screenshotBubbleSide: Int
+        get() = sp.getInt("screenshot_bubble_side", 1)
+        set(v) = sp.edit().putInt("screenshot_bubble_side", v).apply()
+
+    /** Posisi Y bola screenshot dalam px. -1 = posisi awal otomatis. */
+    var screenshotBubbleY: Int
+        get() = sp.getInt("screenshot_bubble_y", -1)
+        set(v) = sp.edit().putInt("screenshot_bubble_y", v).apply()
+
     var countdownSec: Int
         get() = sp.getInt("countdown", 3)
         set(v) = sp.edit().putInt("countdown", v).apply()

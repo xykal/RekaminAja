@@ -97,11 +97,10 @@
             android:exported="false"
             android:foregroundServiceType="mediaProjection|microphone|camera" />
         <service
-            android:name=".recorder.ScreenshotService"
-            android:exported="false"
-            android:foregroundServiceType="mediaProjection" />
-        <service
             android:name=".overlay.FloatingBubbleService"
+            android:exported="false" />
+        <service
+            android:name=".overlay.ScreenshotBubbleService"
             android:exported="false" />
         <service
             android:name=".overlay.DrawOverlayService"
