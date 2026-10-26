@@ -126,7 +126,7 @@ object CaptureCapabilities {
     fun fpsOptions(context: Context): IntArray {
         val refresh = maxDisplayRefreshHz(context)
         val values = Prefs.FPS_OPTIONS.filter { it <= 30 || it <= refresh }
-        return values.toIntArray().ifEmpty { intArrayOf(15, 24, 30) }
+        return if (values.isEmpty()) intArrayOf(15, 24, 30) else values.toIntArray()
     }
 
     fun maxDisplayRefreshHz(context: Context): Int {
@@ -257,7 +257,7 @@ object CaptureCapabilities {
                     false
                 }
                 if (!supports) continue
-                val upper = caps.bitrateRange.upper
+                val upper = video.bitrateRange.upper
                 if (upper > 0 && (best == null || upper > best)) best = upper
             }
         } catch (e: Exception) {
