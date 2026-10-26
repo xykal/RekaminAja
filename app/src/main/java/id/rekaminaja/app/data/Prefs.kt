@@ -15,9 +15,16 @@ object Prefs {
     const val AUDIO_INTERNAL = "internal"
     const val AUDIO_MIX = "mix"
 
-    /** Resolusi = sisi pendek layar dalam px. 0 = native. */
-    val RESOLUTION_OPTIONS = intArrayOf(0, 1080, 720, 540, 480)
-    val FPS_OPTIONS = intArrayOf(15, 24, 30, 48, 60)
+    const val CODEC_AVC = "avc"
+    const val CODEC_HEVC = "hevc"
+
+    /**
+     * Resolusi = sisi pendek target dalam px. 0 = native, 2160 = UHD yang
+     * dimuat ke bingkai 3840x2160 (boleh upscale demi metadata/kompatibilitas
+     * platform; detail tetap berasal dari panel).
+     */
+    val RESOLUTION_OPTIONS = intArrayOf(2160, 0, 1440, 1080, 720, 540, 480)
+    val FPS_OPTIONS = intArrayOf(15, 24, 30, 48, 60, 90, 120)
 
     private lateinit var sp: SharedPreferences
 
@@ -37,6 +44,21 @@ object Prefs {
     var bitrateMbps: Int
         get() = sp.getInt("bitrate", 0)
         set(v) = sp.edit().putInt("bitrate", v).apply()
+
+    /** Codec video: avc (H.264) atau hevc (H.265). Otomatis fallback AVC bila encoder tidak mendukung. */
+    var videoCodec: String
+        get() = sp.getString("video_codec", CODEC_AVC) ?: CODEC_AVC
+        set(v) = sp.edit().putString("video_codec", v).apply()
+
+    /** Berhenti otomatis setelah N menit waktu rekaman aktif. 0 = mati. */
+    var autoStopMinutes: Int
+        get() = sp.getInt("auto_stop_min", 0)
+        set(v) = sp.edit().putInt("auto_stop_min", v.coerceAtLeast(0)).apply()
+
+    /** Sembunyikan bola selama merekam agar tidak masuk hasil video. */
+    var hideBubbleWhileRecording: Boolean
+        get() = sp.getBoolean("hide_bubble_rec", false)
+        set(v) = sp.edit().putBoolean("hide_bubble_rec", v).apply()
 
     var audioSource: String
         get() = sp.getString("audio", AUDIO_MIC) ?: AUDIO_MIC

@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.3.0 — 2026-10-26
+
+### Baru
+- **Mode UHD 4K dan QHD 1440p**: target rekam kini bisa sampai envelope 3840x2160 dengan rasio layar yang dijaga. Panel beresolusi lebih rendah akan di-upscale hanya pada encode untuk kompatibilitas output, tanpa mengarang detail baru
+- **90/120 FPS berbasis kemampuan perangkat**: pilihan FPS mengikuti refresh rate panel, lalu planner kualitas memeriksa batas ukuran, FPS, codec, dan bitrate encoder MediaCodec sebelum merekam. Jika HP tidak mendukung 4K120, target diturunkan aman dan pengguna diberi tahu target efektifnya
+- **H.265/HEVC** untuk ukuran file resolusi tinggi yang jauh lebih kecil, dengan fallback otomatis ke H.264 bila encoder perangkat menolak
+- **Profil kualitas sekali ketuk**: Hemat Storage, Full HD 60, Native Pro 120, dan UHD Max
+- **Info kemampuan perangkat** di Pengaturan: panel, refresh maksimal, target efektif, codec, dan estimasi storage per menit
+- **Bitrate manual sampai 100 Mbps** untuk gerakan cepat pada rekaman UHD
+- **Auto-stop rekaman** setelah 1, 5, 10, 20, 30, atau 60 menit
+- **Mode rekaman bersih**: bola melayang dapat disembunyikan otomatis selama merekam, lalu muncul lagi setelah rekaman berhenti
+
 ## 1.2.1 — 2026-10-25
 
 ### Baru

@@ -203,4 +203,25 @@
     <string name="notif_ready">Ready to record</string>
     <string name="notif_ready_text">Tap Start on the floating bubble. Your screen-capture permission stays active while the bubble is shown, so you will not be asked again.</string>
     <string name="end_session">End session</string>
+
+    <!-- v1.3.0 UHD / high frame rate / pro quality -->
+    <string name="quality_profile">Quality preset</string>
+    <string name="quality_profile_custom">Custom</string>
+    <string name="profile_saver">Saver 720p30</string>
+    <string name="profile_balanced">Balanced 1080p60</string>
+    <string name="profile_pro120">Pro Native 120</string>
+    <string name="profile_uhd_max">UHD Max 120</string>
+    <string name="video_codec">Video codec</string>
+    <string name="codec_avc">H.264 / AVC (most compatible)</string>
+    <string name="codec_hevc">H.265 / HEVC (smaller UHD files)</string>
+    <string name="res_uhd">UHD 4K (3840)</string>
+    <string name="res_qhd">1440p QHD</string>
+    <string name="capability_format">Device display: %1$dx%2$d, up to %3$d Hz. Effective target: %4$dx%5$d at %6$d FPS using %7$s, about %8$s/min.</string>
+    <string name="uhd_note">UHD keeps the screen aspect ratio and fits inside a 3840x2160 frame. On lower-resolution displays it is an encode upscale, so the source detail still comes from the panel. FPS and size are automatically reduced when the display or hardware encoder cannot sustain them.</string>
+    <string name="quality_adjusted_format">Quality adjusted to %1$dx%2$d at %3$d FPS for this device</string>
+    <string name="auto_stop">Auto-stop timer</string>
+    <string name="auto_stop_off">Off</string>
+    <string name="auto_stop_min_format">%1$d minutes</string>
+    <string name="hide_bubble_recording">Hide bubble while recording</string>
+    <string name="hide_bubble_recording_desc">Produces a clean video without the floating bubble. Control the recording from the notification while it is hidden.</string>
 </resources>

@@ -29,24 +29,36 @@ object Util {
 
     /**
      * Terapkan preferensi resolusi (sisi pendek target, 0=native).
-     * Tidak pernah upscale. Hasil diganjilkan ke kelipatan 2 (syarat encoder H.264).
+     * Khusus 2160 (UHD) hasilnya dimuat ke bingkai 3840x2160 dengan rasio
+     * layar dipertahankan; ini satu-satunya mode yang boleh upscale.
+     * Hasil diganjilkan ke kelipatan 2 (syarat encoder H.264).
      */
     fun scaledCaptureSize(display: Size, targetShortSide: Int): Size {
         val w = display.width
         val h = display.height
         if (targetShortSide <= 0) return Size(even(w), even(h))
         val shortSide = min(w, h)
-        if (shortSide <= targetShortSide) return Size(even(w), even(h))
-        val scale = targetShortSide.toDouble() / shortSide.toDouble()
+        val longSide = maxOf(w, h)
+        val scale = if (targetShortSide >= 2160) {
+            min(2160.0 / shortSide.toDouble(), 3840.0 / longSide.toDouble())
+        } else {
+            if (shortSide <= targetShortSide) return Size(even(w), even(h))
+            targetShortSide.toDouble() / shortSide.toDouble()
+        }
         return Size(even((w * scale).roundToInt()), even((h * scale).roundToInt()))
     }
 
     private fun even(v: Int): Int = (v / 2 * 2).coerceAtLeast(2)
 
-    /** Bitrate otomatis: ~0.08 bit per pixel-frame, dibatasi 1–24 Mbps. */
-    fun autoBitrate(width: Int, height: Int, fps: Int): Int {
-        val v = width.toLong() * height * fps * 8 / 100
-        return v.coerceIn(1_000_000L, 24_000_000L).toInt()
+    /**
+     * Bitrate otomatis berdasarkan beban pixel-frame.
+     * AVC memakai ~0,10 bit/pixel-frame; HEVC ~0,06. Dibatasi 1-100 Mbps
+     * lalu CaptureCapabilities dapat menurunkannya sesuai encoder hardware.
+     */
+    fun autoBitrate(width: Int, height: Int, fps: Int, hevc: Boolean = false): Int {
+        val hundredths = if (hevc) 6L else 10L
+        val v = width.toLong() * height.toLong() * fps.toLong() * hundredths / 100L
+        return v.coerceIn(1_000_000L, 100_000_000L).toInt()
     }
 
     fun canOverlay(context: Context): Boolean =

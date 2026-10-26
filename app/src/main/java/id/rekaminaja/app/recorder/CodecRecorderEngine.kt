@@ -43,7 +43,8 @@ class CodecRecorderEngine(
     private val includeInternal: Boolean,
     private val includeMic: Boolean,
     private val fxNoiseSystem: Boolean = false,
-    private val dsp: MicDsp? = null
+    private val dsp: MicDsp? = null,
+    private val videoMime: String = MediaFormat.MIMETYPE_VIDEO_AVC
 ) : RecorderEngine {
 
     // Jeda diimplementasikan best-effort (frame/sampel saat jeda dibuang + timestamp digeser).
@@ -85,24 +86,17 @@ class CodecRecorderEngine(
     @SuppressLint("MissingPermission")
     override fun start(): Surface {
         // --- Video encoder (surface input) ---
-        val videoFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height).apply {
-            setInteger(
-                MediaFormat.KEY_COLOR_FORMAT,
-                MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface
-            )
-            setInteger(MediaFormat.KEY_BIT_RATE, bitrate)
-            setInteger(MediaFormat.KEY_FRAME_RATE, fps)
-            setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2)
-            try {
-                setInteger(
-                    MediaFormat.KEY_BITRATE_MODE,
-                    MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR
-                )
-            } catch (e: Exception) {
-                // Diabaikan; mode default encoder tetap OK.
-            }
-        }
-        videoCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC).apply {
+        val videoFormat = CaptureCapabilities.encoderFormat(
+            videoMime, width, height, fps, bitrate
+        )
+        val encoderName = CaptureCapabilities.encoderNameFor(
+            videoMime, width, height, fps, bitrate
+        )
+        videoCodec = (if (encoderName != null) {
+            MediaCodec.createByCodecName(encoderName)
+        } else {
+            MediaCodec.createEncoderByType(videoMime)
+        }).apply {
             configure(videoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         }
         inputSurface = videoCodec!!.createInputSurface()

@@ -412,10 +412,15 @@ class MainActivity : AppCompatActivity() {
         cardOverlayWarn.visibility = if (Util.canOverlay(this)) View.GONE else View.VISIBLE
         updateTiles()
 
-        val resLabel = if (Prefs.resolution == 0) getString(R.string.res_native)
-        else "${Prefs.resolution}p"
+        val resLabel = when (Prefs.resolution) {
+            2160 -> getString(R.string.res_uhd)
+            0 -> getString(R.string.res_native)
+            1440 -> getString(R.string.res_qhd)
+            else -> "${Prefs.resolution}p"
+        }
         val bitLabel = if (Prefs.bitrateMbps == 0) getString(R.string.bitrate_auto)
         else "${Prefs.bitrateMbps} Mbps"
+        val codecLabel = if (Prefs.videoCodec == Prefs.CODEC_HEVC) " - HEVC" else ""
         val audioLabel = when (Prefs.audioSource) {
             Prefs.AUDIO_NONE -> getString(R.string.audio_none)
             Prefs.AUDIO_INTERNAL -> getString(R.string.audio_internal)
@@ -423,7 +428,7 @@ class MainActivity : AppCompatActivity() {
             else -> getString(R.string.audio_mic)
         }
         val fxSuffix = if (Prefs.anyAudioFx) " + " + getString(R.string.podcast_fx) else ""
-        tvSummary.text = "$resLabel - ${Prefs.fps} FPS - $bitLabel\n$audioLabel$fxSuffix"
+        tvSummary.text = "$resLabel - ${Prefs.fps} FPS - $bitLabel$codecLabel\n$audioLabel$fxSuffix"
         tvStorage.text = getString(R.string.storage_free_format, Util.formatSize(freeBytes()))
     }
 

@@ -377,6 +377,15 @@ class FloatingBubbleService : Service() {
 
     private fun updateBubbleVisual() {
         val state = RecorderState.state
+        val shouldHide = Prefs.hideBubbleWhileRecording && RecorderState.isRecording
+        if (shouldHide) {
+            if (panel != null) closePanel()
+            if (bubble?.visibility != View.GONE) bubble?.visibility = View.GONE
+            return
+        } else if (bubble?.visibility != View.VISIBLE) {
+            bubble?.visibility = View.VISIBLE
+            wakeBubble()
+        }
         if (state != lastVisualState) {
             lastVisualState = state
             when (state) {

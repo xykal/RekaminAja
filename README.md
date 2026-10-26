@@ -29,14 +29,14 @@ Rencana distribusi: APKPure terlebih dahulu, Google Play menyusul.
 
 | Fitur | Keterangan |
 |---|---|
-| Rekam layar HD | Resolusi native sampai 480p, 15-60 FPS, bitrate otomatis atau manual sampai 24 Mbps |
+| Rekam sampai UHD/120 FPS | Native, UHD 4K (maks 3840x2160), QHD 1440p, 1080p, 720p, 540p, dan 480p; 24-120 FPS mengikuti panel dan encoder, H.264 atau H.265/HEVC, bitrate manual sampai 100 Mbps, profil kualitas, penurunan target yang aman, dan estimasi storage per menit. UHD menjaga rasio dan dapat meng-upscale panel lebih rendah untuk output; detail asli tetap dibatasi sumber panel |
 | Audio internal | Android 10+ melalui AudioPlaybackCapture, termasuk mode internal + mikrofon |
 | Mikrofon / tanpa suara | Jalur MediaRecorder native yang stabil untuk mode standar |
 | Audio Lab | Efek suara podcast yang sepenuhnya opsional: reduksi noise sistem, noise gate, kompresor, dan penguat mikrofon. Semua mati secara default |
 | Deck Efek Suara | Preset suara mic live dari panel melayang: Super Bersih, Ngebas Podcast, Echo, Bergema, Alien, Robot, Cempreng, plus intensitas dan volume mic 10-200% |
 | Auto Subtitle | Membuat subtitle SRT bahasa Indonesia dari suara mikrofon setelah perekaman selesai, sepenuhnya offline dengan model Whisper yang dibundel di APK |
 | Jeda dan lanjut | Termasuk kontrol dari notifikasi custom berisi timer, jeda/stop, dan pengatur volume mic |
-| Bola melayang | Bola kecil 46dp yang menempel di tepi kiri/kanan; seret ke lingkaran hapus di bawah untuk menyembunyikan. Panel deck berisi aksi bulat, Deck Efek Suara, volume mic, dan volume HP |
+| Bola melayang | Bola kecil 38dp yang menempel di tepi kiri/kanan; seret ke lingkaran hapus di bawah untuk menyembunyikan. Panel deck berisi aksi bulat, Deck Efek Suara, volume mic, volume HP, plus opsi sembunyikan otomatis selama merekam dan auto-stop 1-60 menit |
 | Screenshot | Sekali ketuk, tersimpan di Pictures/RekaminAja |
 | Facecam | Overlay kamera bundar berbasis Camera2, bisa diseret, tekan-tahan untuk ganti kamera |
 | Gambar di layar | Kuas overlay; coretan ikut terekam, cocok untuk tutorial |

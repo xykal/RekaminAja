@@ -1,6 +1,7 @@
 package id.rekaminaja.app.recorder
 
 import android.content.Context
+import android.media.MediaFormat
 import android.media.MediaRecorder
 import android.os.Build
 import android.view.Surface
@@ -17,7 +18,8 @@ class MediaRecorderEngine(
     private val height: Int,
     private val fps: Int,
     private val bitrate: Int,
-    private val useMic: Boolean
+    private val useMic: Boolean,
+    private val videoMime: String = MediaFormat.MIMETYPE_VIDEO_AVC
 ) : RecorderEngine {
 
     override val supportsPause: Boolean = true
@@ -25,6 +27,22 @@ class MediaRecorderEngine(
     private var recorder: MediaRecorder? = null
 
     override fun start(): Surface {
+        return try {
+            startWith(videoMime)
+        } catch (e: Exception) {
+            releaseRecorder()
+            if (videoMime == MediaFormat.MIMETYPE_VIDEO_HEVC) {
+                // Sebagian encoder MediaRecorder menolak HEVC pada ukuran/FPS
+                // tertentu; H.264 adalah fallback kompatibilitas teraman.
+                outputFile.delete()
+                startWith(MediaFormat.MIMETYPE_VIDEO_AVC)
+            } else {
+                throw e
+            }
+        }
+    }
+
+    private fun startWith(mime: String): Surface {
         val mr = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaRecorder(context)
         } else {
@@ -36,7 +54,15 @@ class MediaRecorderEngine(
         mr.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
         mr.setOutputFile(outputFile.absolutePath)
         mr.setVideoSize(width, height)
-        mr.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+        val encoder = if (
+            mime == MediaFormat.MIMETYPE_VIDEO_HEVC &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+        ) {
+            MediaRecorder.VideoEncoder.HEVC
+        } else {
+            MediaRecorder.VideoEncoder.H264
+        }
+        mr.setVideoEncoder(encoder)
         if (useMic) {
             mr.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
             mr.setAudioSamplingRate(44_100)
@@ -48,6 +74,21 @@ class MediaRecorderEngine(
         val surface = mr.surface
         mr.start()
         return surface
+    }
+
+    private fun releaseRecorder() {
+        val mr = recorder
+        recorder = null
+        if (mr != null) {
+            try {
+                mr.reset()
+            } catch (e: Exception) {
+            }
+            try {
+                mr.release()
+            } catch (e: Exception) {
+            }
+        }
     }
 
     override fun pause() {

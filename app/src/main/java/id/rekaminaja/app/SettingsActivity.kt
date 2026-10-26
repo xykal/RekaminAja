@@ -14,6 +14,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import id.rekaminaja.app.data.Prefs
+import id.rekaminaja.app.recorder.CaptureCapabilities
 import id.rekaminaja.app.ui.RekChoiceView
 import id.rekaminaja.app.ui.RekDialogs
 import id.rekaminaja.app.ui.RekPillButton
@@ -41,24 +42,70 @@ class SettingsActivity : AppCompatActivity() {
     private fun buildUi() {
         // ---- Video ----
         val video = section(R.string.video_section)
+        val qualityProfileLabels = listOf(
+            getString(R.string.quality_profile_custom),
+            getString(R.string.profile_saver),
+            getString(R.string.profile_balanced),
+            getString(R.string.profile_pro120),
+            getString(R.string.profile_uhd_max)
+        )
+        addChoice(
+            video, R.string.quality_profile, qualityProfileLabels,
+            currentQualityProfileIndex()
+        ) { picked ->
+            if (picked > 0) {
+                applyQualityProfile(picked)
+                container.removeAllViews()
+                buildUi()
+            }
+        }
         addChoice(
             video, R.string.resolution,
             Prefs.RESOLUTION_OPTIONS.map {
-                if (it == 0) getString(R.string.res_native) else "${it}p"
+                when (it) {
+                    2160 -> getString(R.string.res_uhd)
+                    0 -> getString(R.string.res_native)
+                    1440 -> getString(R.string.res_qhd)
+                    else -> "${it}p"
+                }
             },
             Prefs.RESOLUTION_OPTIONS.indexOf(Prefs.resolution).coerceAtLeast(0)
         ) { Prefs.resolution = Prefs.RESOLUTION_OPTIONS[it] }
+        val fpsOptions = CaptureCapabilities.fpsOptions(this)
         addChoice(
             video, R.string.fps,
-            Prefs.FPS_OPTIONS.map { "$it FPS" },
-            Prefs.FPS_OPTIONS.indexOf(Prefs.fps).coerceAtLeast(0)
-        ) { Prefs.fps = Prefs.FPS_OPTIONS[it] }
-        val bitrates = intArrayOf(0, 2, 4, 6, 8, 12, 16, 20, 24)
+            fpsOptions.map { "$it FPS" },
+            fpsOptions.indexOf(Prefs.fps).coerceAtLeast(0)
+        ) { Prefs.fps = fpsOptions[it] }
+        val bitrates = intArrayOf(0, 2, 4, 6, 8, 12, 16, 20, 24, 32, 40, 60, 80, 100)
         addChoice(
             video, R.string.bitrate,
             bitrates.map { if (it == 0) getString(R.string.bitrate_auto) else "$it Mbps" },
             bitrates.indexOf(Prefs.bitrateMbps).coerceAtLeast(0)
         ) { Prefs.bitrateMbps = bitrates[it] }
+        val codecValues = listOf(Prefs.CODEC_AVC, Prefs.CODEC_HEVC)
+        addChoice(
+            video, R.string.video_codec,
+            listOf(getString(R.string.codec_avc), getString(R.string.codec_hevc)),
+            codecValues.indexOf(Prefs.videoCodec).coerceAtLeast(0)
+        ) { Prefs.videoCodec = codecValues[it] }
+        val plan = CaptureCapabilities.plan(this)
+        val bytesPerMinute = (plan.bitrate.toLong() + 128_000L) * 60L / 8L
+        addNoteText(
+            video,
+            getString(
+                R.string.capability_format,
+                plan.displaySize.width,
+                plan.displaySize.height,
+                plan.maxRefreshHz,
+                plan.size.width,
+                plan.size.height,
+                plan.fps,
+                plan.codecLabel,
+                Util.formatSize(bytesPerMinute)
+            )
+        )
+        addNote(video, R.string.uhd_note)
 
         // ---- Audio ----
         val audio = section(R.string.audio_section)
@@ -171,6 +218,19 @@ class SettingsActivity : AppCompatActivity() {
         addToggle(rec, R.string.floating_bubble, null, Prefs.floatingBubble) {
             Prefs.floatingBubble = it
         }
+        addToggle(
+            rec, R.string.hide_bubble_recording, R.string.hide_bubble_recording_desc,
+            Prefs.hideBubbleWhileRecording
+        ) { Prefs.hideBubbleWhileRecording = it }
+        val autoStops = intArrayOf(0, 1, 5, 10, 20, 30, 60)
+        addChoice(
+            rec, R.string.auto_stop,
+            autoStops.map {
+                if (it == 0) getString(R.string.auto_stop_off)
+                else getString(R.string.auto_stop_min_format, it)
+            },
+            autoStops.indexOf(Prefs.autoStopMinutes).coerceAtLeast(0)
+        ) { Prefs.autoStopMinutes = autoStops[it] }
 
         // ---- Facecam ----
         val face = section(R.string.overlay_section)
@@ -223,6 +283,46 @@ class SettingsActivity : AppCompatActivity() {
             )
         }
         container.addView(about)
+    }
+
+    /** 0 = kustom, 1..4 = index preset kualitas pada baris pilihan. */
+    private fun currentQualityProfileIndex(): Int {
+        val r = Prefs.resolution
+        val f = Prefs.fps
+        val c = Prefs.videoCodec
+        return when {
+            r == 720 && f == 30 && c == Prefs.CODEC_AVC -> 1
+            r == 1080 && f == 60 && c == Prefs.CODEC_AVC -> 2
+            r == 0 && f == 120 && c == Prefs.CODEC_HEVC -> 3
+            r == 2160 && f == 120 && c == Prefs.CODEC_HEVC -> 4
+            else -> 0
+        }
+    }
+
+    private fun applyQualityProfile(profile: Int) {
+        when (profile) {
+            1 -> {
+                Prefs.resolution = 720
+                Prefs.fps = 30
+                Prefs.videoCodec = Prefs.CODEC_AVC
+            }
+            2 -> {
+                Prefs.resolution = 1080
+                Prefs.fps = 60
+                Prefs.videoCodec = Prefs.CODEC_AVC
+            }
+            3 -> {
+                Prefs.resolution = 0
+                Prefs.fps = 120
+                Prefs.videoCodec = Prefs.CODEC_HEVC
+            }
+            4 -> {
+                Prefs.resolution = 2160
+                Prefs.fps = 120
+                Prefs.videoCodec = Prefs.CODEC_HEVC
+            }
+        }
+        if (profile in 1..4) Prefs.bitrateMbps = 0
     }
 
     private fun currentPresetIndex(): Int {
@@ -422,8 +522,12 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun addNote(card: LinearLayout, textRes: Int) {
+        addNoteText(card, getString(textRes))
+    }
+
+    private fun addNoteText(card: LinearLayout, text: String) {
         val tv = TextView(this).apply {
-            setText(textRes)
+            this.text = text
             textSize = 12.5f
             setTextColor(ContextCompat.getColor(this@SettingsActivity, R.color.muted))
             setPadding(0, Util.dp(this@SettingsActivity, 6), 0, Util.dp(this@SettingsActivity, 2))

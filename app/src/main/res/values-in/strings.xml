@@ -203,4 +203,25 @@
     <string name="notif_ready">Siap merekam</string>
     <string name="notif_ready_text">Ketuk Mulai di bola melayang. Izin tangkapan layar tetap aktif selama bola tampil, jadi tidak akan ditanyakan lagi.</string>
     <string name="end_session">Akhiri sesi</string>
+
+    <!-- v1.3.0 UHD / high frame rate / pro quality -->
+    <string name="quality_profile">Preset kualitas</string>
+    <string name="quality_profile_custom">Kustom</string>
+    <string name="profile_saver">Hemat 720p30</string>
+    <string name="profile_balanced">Seimbang 1080p60</string>
+    <string name="profile_pro120">Pro Native 120</string>
+    <string name="profile_uhd_max">UHD Max 120</string>
+    <string name="video_codec">Codec video</string>
+    <string name="codec_avc">H.264 / AVC (paling kompatibel)</string>
+    <string name="codec_hevc">H.265 / HEVC (file UHD lebih kecil)</string>
+    <string name="res_uhd">UHD 4K (3840)</string>
+    <string name="res_qhd">1440p QHD</string>
+    <string name="capability_format">Layar perangkat: %1$dx%2$d, sampai %3$d Hz. Target efektif: %4$dx%5$d pada %6$d FPS memakai %7$s, sekitar %8$s/menit.</string>
+    <string name="uhd_note">UHD menjaga rasio layar dan dimuat dalam bingkai 3840x2160. Pada layar beresolusi lebih rendah ini adalah upscale saat encoding, jadi detail sumber tetap berasal dari panel. FPS dan ukuran otomatis diturunkan bila layar atau encoder hardware tidak sanggup mempertahankannya.</string>
+    <string name="quality_adjusted_format">Kualitas disesuaikan ke %1$dx%2$d pada %3$d FPS untuk perangkat ini</string>
+    <string name="auto_stop">Timer berhenti otomatis</string>
+    <string name="auto_stop_off">Mati</string>
+    <string name="auto_stop_min_format">%1$d menit</string>
+    <string name="hide_bubble_recording">Sembunyikan bola saat merekam</string>
+    <string name="hide_bubble_recording_desc">Hasil video bersih tanpa bola melayang. Kendalikan rekaman dari notifikasi selama bola tersembunyi.</string>
 </resources>

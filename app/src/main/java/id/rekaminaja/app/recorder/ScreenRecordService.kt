@@ -87,6 +87,11 @@ class ScreenRecordService : Service() {
     private val ticker = object : Runnable {
         override fun run() {
             if (RecorderState.isRecording) {
+                val limitMin = Prefs.autoStopMinutes
+                if (limitMin > 0 && RecorderState.elapsedMs() >= limitMin * 60_000L) {
+                    stopRecording()
+                    return
+                }
                 updateNotification()
                 mainHandler.postDelayed(this, 1_000)
             }
@@ -243,14 +248,20 @@ class ScreenRecordService : Service() {
                 proj.registerCallback(projectionCallback, workerHandler)
             }
 
-            val display = Util.realDisplaySize(this)
-            val capture = Util.scaledCaptureSize(display, Prefs.resolution)
+            // Target kualitas selalu divalidasi terhadap refresh layar dan
+            // encoder hardware. UHD/120 FPS diturunkan aman bila HP tidak kuat.
+            val plan = CaptureCapabilities.plan(this)
+            val capture = plan.size
             val dpi = resources.displayMetrics.densityDpi
-            val fps = Prefs.fps
-            val bitrate = if (Prefs.bitrateMbps > 0) {
-                Prefs.bitrateMbps * 1_000_000
-            } else {
-                Util.autoBitrate(capture.width, capture.height, fps)
+            val fps = plan.fps
+            val bitrate = plan.bitrate
+            if (plan.adjusted) {
+                toastText(
+                    getString(
+                        R.string.quality_adjusted_format,
+                        capture.width, capture.height, fps
+                    )
+                )
             }
 
             val name = OutputStore.videoDisplayName()
@@ -283,7 +294,8 @@ class ScreenRecordService : Service() {
                         MicDsp(44_100, Prefs.fxGate, Prefs.fxCompressor, Prefs.fxGainDb)
                     } else {
                         null
-                    }
+                    },
+                    videoMime = plan.mime
                 )
                 try {
                     surface = codecEngine.start()
@@ -300,7 +312,8 @@ class ScreenRecordService : Service() {
                     )
                     val fallback = MediaRecorderEngine(
                         this, file, capture.width, capture.height, fps, bitrate,
-                        useMic = audio == Prefs.AUDIO_MIX || audio == Prefs.AUDIO_MIC
+                        useMic = audio == Prefs.AUDIO_MIX || audio == Prefs.AUDIO_MIC,
+                        videoMime = plan.mime
                     )
                     surface = fallback.start()
                     eng = fallback
@@ -310,7 +323,8 @@ class ScreenRecordService : Service() {
                 val mr = MediaRecorderEngine(
                     this, file, capture.width, capture.height, fps, bitrate,
                     // Internal di Android <10 -> fallback mic.
-                    useMic = audio != Prefs.AUDIO_NONE
+                    useMic = audio != Prefs.AUDIO_NONE,
+                    videoMime = plan.mime
                 )
                 surface = mr.start()
                 eng = mr
@@ -806,6 +820,10 @@ class ScreenRecordService : Service() {
 
     private fun toast(resId: Int) {
         mainHandler.post { Toast.makeText(this, resId, Toast.LENGTH_LONG).show() }
+    }
+
+    private fun toastText(message: String) {
+        mainHandler.post { Toast.makeText(this, message, Toast.LENGTH_LONG).show() }
     }
 
     private fun dataExtra(intent: Intent): Intent? {
