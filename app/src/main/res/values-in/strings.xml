@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">RekaminAja</string>
-    <string name="tagline">Perekam layar gratis. Tanpa watermark. Tanpa iklan. Tanpa pelacakan.</string>
+    <string name="tagline">Gratis • Tanpa watermark • Tanpa iklan</string>
 
     <string name="channel_recording">Perekaman</string>
     <string name="channel_recording_desc">Ditampilkan selama layar direkam</string>
@@ -150,32 +150,7 @@
     <string name="tool_bubble">Bola melayang</string>
     <string name="zones_count_format">%1$d zona</string>
 
-    <!-- Auto Subtitle -->
-    <string name="auto_subtitle">Auto Subtitle</string>
-    <string name="subtitle_ready">Subtitle siap</string>
-    <string name="subtitle_show">Tampilkan subtitle</string>
-    <string name="subtitle_hide">Sembunyikan subtitle</string>
-    <string name="subtitle_share_srt">Bagikan file SRT</string>
-    <string name="subtitle_regenerate">Buat ulang subtitle</string>
-    <string name="subtitle_generating">Membuat subtitle</string>
-    <string name="subtitle_stage_prepare">Menyiapkan model suara offline...</string>
-    <string name="subtitle_stage_extract">Mengekstrak audio mikrofon...</string>
-    <string name="subtitle_stage_transcribe">Mentranskrip suara bahasa Indonesia secara offline...</string>
-    <string name="subtitle_stage_save">Menyimpan subtitle SRT...</string>
-    <string name="subtitle_progress_format">%1$d%%</string>
-    <string name="subtitle_saved">Subtitle tersimpan sebagai SRT</string>
-    <string name="subtitle_failed">Subtitle tidak dapat dibuat</string>
-    <string name="subtitle_no_audio">Video ini tidak memiliki trek audio</string>
-    <string name="subtitle_no_voice">Tidak terdeteksi suara manusia yang cukup jelas</string>
-    <string name="subtitle_not_mic">Auto Subtitle hanya untuk rekaman mikrofon atau suara manusia</string>
-    <string name="subtitle_unsupported_device">Auto Subtitle membutuhkan perangkat ARM yang memakai edisi Full</string>
-    <string name="subtitle_unsupported_edition">Auto Subtitle tidak disertakan pada edisi Universal Lite. Pasang edisi Full ARM yang sesuai perangkatmu untuk menggunakannya.</string>
-    <string name="subtitle_model_missing">Model suara bawaan tidak ditemukan pada build ini</string>
-    <string name="subtitle_busy">Subtitle lain masih sedang dibuat</string>
-    <string name="subtitle_cancelled">Pembuatan subtitle dibatalkan</string>
-    <string name="subtitle_unavailable_recording">Selesaikan rekaman yang sedang berjalan sebelum membuat subtitle</string>
-    <string name="subtitle_file_missing">File subtitle tidak ditemukan</string>
-    <string name="subtitle_offline_note">Sepenuhnya offline untuk suara mikrofon berbahasa Indonesia. Audio internal game atau musik dilewati.</string>
+    <string name="progress_percent_format">%1$d%%</string>
 
     <!-- v1.2 voice FX deck, volumes, notification -->
     <string name="voice_preset">Preset suara</string>
@@ -196,8 +171,7 @@
     <string name="fx_applies_next">Efek suara berlaku mulai rekaman berikutnya</string>
     <string name="notif_mic_format">Mic %1$d%%</string>
     <string name="bubble_remove_hint">Lepaskan untuk menyembunyikan bola</string>
-    <string name="subtitle_stage_transcribe_chunk">Mentranskrip bagian %1$d dari %2$d</string>
-    <string name="subtitle_elapsed_format">Berjalan %1$s</string>
+    <string name="progress_elapsed_format">Berjalan %1$s</string>
 
     <!-- v1.2.1 persistent projection session -->
     <string name="notif_ready">Siap merekam</string>
@@ -242,4 +216,17 @@
     <string name="screenshot_bubble">Bola screenshot khusus</string>
     <string name="screenshot_bubble_desc">Menampilkan tab kamera terpisah di tepi layar. Ketuk untuk screenshot instan setelah izin tangkapan aktif; tekan-tahan untuk menyembunyikannya.</string>
     <string name="screenshot_bubble_hidden">Bola screenshot disembunyikan. Buka RekaminAja untuk menampilkannya lagi.</string>
+    <string name="screenshot_bubble_hint">Ketuk untuk screenshot</string>
+    <string name="summary_effective_format">%1$d×%2$d • %3$d FPS • %4$s • ≈%5$s/mnt</string>
+    <string name="summary_adjusted_suffix"> (disesuaikan perangkat)</string>
+    <string name="readiness_all_set">Siap: semua izin lengkap</string>
+    <string name="readiness_missing_format">Perlu dilengkapi: %1$s</string>
+    <string name="readiness_overlay">overlay</string>
+    <string name="readiness_microphone">mikrofon</string>
+    <string name="readiness_notifications">notifikasi</string>
+    <string name="readiness_storage">penyimpanan</string>
+    <string name="readiness_camera">kamera</string>
+    <string name="readiness_session_active">Sesi tangkapan aktif</string>
+    <string name="readiness_session_waiting">Izin tangkapan akan diminta saat mulai</string>
+    <string name="view_image">Lihat</string>
 </resources>

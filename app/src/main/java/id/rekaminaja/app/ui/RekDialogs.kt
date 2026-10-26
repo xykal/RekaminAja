@@ -37,7 +37,7 @@ object RekDialogs {
                 if (!dialog.isShowing) return
                 val elapsed = android.os.SystemClock.elapsedRealtime() - startedAt
                 v.text = v.context.getString(
-                    R.string.subtitle_elapsed_format, Util.formatDuration(elapsed)
+                    R.string.progress_elapsed_format, Util.formatDuration(elapsed)
                 )
                 v.postDelayed(this, 1_000)
             }
@@ -52,7 +52,7 @@ object RekDialogs {
                 if (dialog.isShowing) {
                     messageView.text = message
                     percentView.text = percentView.context
-                        .getString(R.string.subtitle_progress_format, p)
+                        .getString(R.string.progress_percent_format, p)
                     (fillView.layoutParams as? LinearLayout.LayoutParams)?.let {
                         it.weight = p.toFloat()
                         fillView.layoutParams = it
@@ -303,7 +303,7 @@ object RekDialogs {
         }
         column.addView(messageView)
         val percentView = TextView(context).apply {
-            text = context.getString(R.string.subtitle_progress_format, 0)
+            text = context.getString(R.string.progress_percent_format, 0)
             textSize = 12.5f
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             setTextColor(ContextCompat.getColor(context, R.color.brand_deep))
@@ -311,7 +311,7 @@ object RekDialogs {
         column.addView(percentView)
         val elapsedView = TextView(context).apply {
             text = context.getString(
-                R.string.subtitle_elapsed_format, Util.formatDuration(0L)
+                R.string.progress_elapsed_format, Util.formatDuration(0L)
             )
             textSize = 11.5f
             setTextColor(ContextCompat.getColor(context, R.color.muted))

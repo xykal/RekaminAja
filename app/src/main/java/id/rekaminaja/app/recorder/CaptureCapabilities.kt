@@ -39,6 +39,12 @@ object CaptureCapabilities {
 
         val codecLabel: String
             get() = if (mime == MediaFormat.MIMETYPE_VIDEO_HEVC) "HEVC" else "H.264"
+
+        /** Perkiraan kasar ukuran file per menit pada bitrate rencana ini. */
+        fun estimatedBytesPerMinute(includeAudio: Boolean): Long {
+            val audioBps = if (includeAudio) 128_000L else 0L
+            return (bitrate.toLong() + audioBps) * 60L / 8L
+        }
     }
 
     @Volatile

@@ -92,7 +92,9 @@ class SettingsActivity : AppCompatActivity() {
             codecValues.indexOf(Prefs.videoCodec).coerceAtLeast(0)
         ) { Prefs.videoCodec = codecValues[it] }
         val plan = CaptureCapabilities.plan(this)
-        val bytesPerMinute = (plan.bitrate.toLong() + 128_000L) * 60L / 8L
+        val bytesPerMinute = plan.estimatedBytesPerMinute(
+            Prefs.audioSource != Prefs.AUDIO_NONE
+        )
         addNoteText(
             video,
             getString(

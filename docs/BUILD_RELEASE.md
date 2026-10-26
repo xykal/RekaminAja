@@ -11,18 +11,17 @@ git push origin v1.0.0
 ```
 
 Workflow [`Release`](../.github/workflows/release.yml) akan:
-1. Checkout termasuk submodule, lalu setup JDK 17, Android SDK API 37, NDK, dan CMake
+1. Checkout source, lalu setup JDK 17 dan Android SDK API 37
 2. Membaca keystore dari GitHub Secrets (jika ada)
-3. Build APK Full ARM64, APK Full armeabi-v7a, APK Lite Universal, dan AAB Full
-4. Menerbitkan **GitHub Release** berisi ketiga APK, satu `.aab`, dan `SHA256SUMS.txt`
+3. Build satu APK universal dan satu AAB dari project pure Kotlin
+4. Memverifikasi signing serta memastikan APK tidak membawa library native `.so`
+   atau model suara `ggml-*.bin`
+5. Menerbitkan **GitHub Release** berisi APK universal, satu `.aab`, dan
+   `SHA256SUMS.txt`
 
-Saat build edisi Full, task Gradle `downloadWhisperModel` mengunduh model Auto
-Subtitle dari revisi Hugging Face yang terpaku, memverifikasi ukuran dan SHA-256,
-lalu membundelnya sebagai asset. Unduhan ini hanya terjadi di mesin build/CI;
-aplikasi tetap tidak memiliki izin INTERNET dan model biner tidak disimpan di Git.
-Native Whisper dibuild lokal dari source terpaku untuk ARM64 dan armeabi-v7a.
-Edisi Full jauh lebih besar daripada v1.0, sedangkan Lite Universal tetap kecil
-karena tidak membawa model maupun library native Whisper.
+Semua varian v1.4.1 yang pernah dirilis memakai `versionCode 8`, sehingga
+`versionCode 9` pada v1.5.0 dapat dipasang sebagai update di atas APK Full
+ARM64, Full armeabi-v7a, maupun Lite Universal dengan signer yang sama.
 
 Push biasa ke `main` menjalankan workflow [`CI`](../.github/workflows/ci.yml)
 (debug + release sebagai artifact).
@@ -77,19 +76,20 @@ rilisan awal sebelum Google Play ($25 sekali bayar).
 - [ ] CHANGELOG terisi
 - [ ] Tag `vX.Y.Z` dipush → GitHub Release hijau → unduh APK dari Release
 - [ ] Uji APK Release di perangkat beneran:
+  - [ ] Update langsung dari v1.4.1 Full ARM64, Full armeabi-v7a, dan Lite Universal tanpa uninstall
   - [ ] Rekam mode mic / internal / internal+mic / senyap
   - [ ] Audio Lab: preset Off/Natural/Podcast/Studio di mode mic dan internal+mic; bandingkan kebisingan latar dan kejernihan suara
-  - [ ] Auto Subtitle pada APK Full ARM64 dan armeabi-v7a: rekaman mic berbahasa Indonesia pendek dan panjang, mode pesawat aktif, pembatalan proses, tampilan subtitle di player, bagikan/buat ulang SRT, serta pesan untuk rekaman internal murni; catat kecepatan/RAM pada perangkat 32-bit dan uji APK Lite menampilkan pesan edisi yang benar
   - [ ] Pause/resume, rotasi layar saat merekam, rekaman > 10 menit
   - [ ] Bola melayang, facecam, zona sensor, auto-pause app sensitif
-  - [ ] Screenshot, galeri, trim, share
+  - [ ] Screenshot idle dan saat merekam, pratinjau notifikasi Lihat/Bagikan, galeri, trim, share
+  - [ ] Rekaman kedua dan screenshot berikutnya tetap instan selama sesi bola aktif; akhiri sesi dan pastikan izin diminta lagi
   - [ ] Android 14+ (dialog "satu app vs seluruh layar") & Android lama (7–9) bila ada
 - [ ] Siapkan aset listing:
   - Ikon 512×512 PNG (ekspor dari `ic_launcher_foreground` + latar `#B3261E`)
   - Screenshot minimal 3 (portrait), bisa diambil dengan RekaminAja sendiri
   - Deskripsi singkat & lengkap (ambil dari README), kategori: Video Players & Editors / Tools
   - URL Privacy Policy: pakai tautan `PRIVACY_POLICY.md` di repo GitHub
-- [ ] Upload APK Full sesuai arsitektur yang sama persis dari GitHub Release (jangan rebuild lokal); tautkan Full armeabi-v7a dan Lite Universal bila kanal distribusi mendukung banyak APK
+- [ ] Upload APK universal yang sama persis dari GitHub Release (jangan rebuild lokal)
 
 ## 4. Naik versi
 

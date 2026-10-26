@@ -84,7 +84,7 @@ class ConsentActivity : AppCompatActivity() {
 
     private fun launchProjection() {
         if (mode() == MODE_SCREENSHOT) {
-            if (RecorderState.isRecording || RecorderState.state == RecorderState.State.COUNTDOWN) {
+            if (RecorderState.state == RecorderState.State.COUNTDOWN) {
                 Toast.makeText(this, R.string.screenshot_while_recording, Toast.LENGTH_SHORT).show()
                 finish()
                 return

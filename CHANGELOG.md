@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.5.0 — 2026-10-26
+
+### Baru
+- **Screenshot saat merekam**: ambil screenshot dari layar utama atau toolbox bola melayang tanpa menghentikan rekaman. VirtualDisplay yang sama dipinjam sebentar, kontrol RekaminAja disembunyikan dari frame, lalu encoder dipasang kembali
+- **Pratinjau screenshot di notifikasi** lengkap dengan aksi **Lihat** dan **Bagikan**
+- **Ringkasan kualitas efektif di layar utama**: resolusi, FPS, codec, rute audio dan Voice FX, serta perkiraan ukuran file per menit dihitung dari kemampuan panel dan encoder perangkat
+- **Status kesiapan yang jelas**: layar utama kini memberi tahu izin overlay, mikrofon, notifikasi, storage, dan kamera yang masih kurang, serta apakah sesi tangkapan sudah aktif
+- **Petunjuk pertama bola screenshot** agar fungsi bola kamera langsung dikenali
+
+### Perbaikan
+- Ikon screenshot diganti menjadi kamera berlensa yang jelas di semua tombol dan bola melayang
+- Tagline header dipersingkat dan tidak lagi mudah terpotong pada layar sempit
+- Dua bola tepi kini mulai dengan jarak yang lebih lega; lingkaran visualnya tetap mungil, tetapi target sentuh transparannya minimum 48dp agar tidak mudah salah ketuk
+- Satu VirtualDisplay persisten dipakai ulang untuk rekaman dan screenshot pada satu sesi MediaProjection, sehingga alur ini lebih sesuai untuk Android modern dan sesi berikutnya tetap instan
+- Perkiraan storage sekarang tidak menghitung audio bila mode Tanpa Suara dipilih
+
+### Diubah
+- **Auto Subtitle dihapus sepenuhnya**, termasuk mesin Whisper, model offline, modul native, antarmuka subtitle, dan pembuatan file SRT dari aplikasi
+- Edisi Full/Lite dan APK per arsitektur diganti **satu APK universal pure Kotlin** yang jauh lebih kecil dan tidak membawa library native atau model suara
+
 ## 1.4.1 — 2026-10-26
 
 ### Baru

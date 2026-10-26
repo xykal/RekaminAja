@@ -45,20 +45,23 @@
                     android:textSize="21sp" />
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:ellipsize="end"
                     android:maxLines="2"
                     android:text="@string/tagline"
                     android:textColor="@color/muted"
-                    android:textSize="12sp" />
+                    android:textSize="11.5sp" />
             </LinearLayout>
 
             <TextView
                 android:id="@+id/tvStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
                 android:background="@drawable/bg_chip"
                 android:fontFamily="sans-serif-medium"
+                android:maxLines="1"
                 android:paddingStart="12dp"
                 android:paddingTop="7dp"
                 android:paddingEnd="12dp"
@@ -203,6 +206,16 @@
                     android:layout_height="wrap_content"
                     android:textColor="@color/muted"
                     android:textSize="12.5sp" />
+
+                <TextView
+                    android:id="@+id/tvReadiness"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="2"
+                    android:textColor="@color/accent_green"
+                    android:textSize="11.5sp" />
             </LinearLayout>
 
             <ImageView

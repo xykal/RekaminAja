@@ -157,6 +157,16 @@ object Prefs {
         get() = sp.getInt("screenshot_bubble_y", -1)
         set(v) = sp.edit().putInt("screenshot_bubble_y", v).apply()
 
+    /** Petunjuk sekali tampil di samping bola screenshot baru. */
+    var screenshotBubbleHintShown: Boolean
+        get() = sp.getBoolean("screenshot_bubble_hint_shown", false)
+        set(v) = sp.edit().putBoolean("screenshot_bubble_hint_shown", v).apply()
+
+    /** Migrasi v1.5: beri jarak awal lebih lega antara dua bola tepi. */
+    var bubbleSpacingV150: Boolean
+        get() = sp.getBoolean("bubble_spacing_v150", false)
+        set(v) = sp.edit().putBoolean("bubble_spacing_v150", v).apply()
+
     var countdownSec: Int
         get() = sp.getInt("countdown", 3)
         set(v) = sp.edit().putInt("countdown", v).apply()

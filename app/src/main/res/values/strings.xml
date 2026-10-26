@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">RekaminAja</string>
-    <string name="tagline">Free screen recorder. No watermark. No ads. No tracking.</string>
+    <string name="tagline">Free • No watermark • No ads</string>
 
     <string name="channel_recording">Recording</string>
     <string name="channel_recording_desc">Shown while the screen is being recorded</string>
@@ -150,32 +150,7 @@
     <string name="tool_bubble">Floating ball</string>
     <string name="zones_count_format">%1$d zones</string>
 
-    <!-- Auto Subtitle -->
-    <string name="auto_subtitle">Auto Subtitle</string>
-    <string name="subtitle_ready">Subtitle ready</string>
-    <string name="subtitle_show">Show subtitles</string>
-    <string name="subtitle_hide">Hide subtitles</string>
-    <string name="subtitle_share_srt">Share SRT file</string>
-    <string name="subtitle_regenerate">Regenerate subtitles</string>
-    <string name="subtitle_generating">Creating subtitles</string>
-    <string name="subtitle_stage_prepare">Preparing offline speech model...</string>
-    <string name="subtitle_stage_extract">Extracting microphone audio...</string>
-    <string name="subtitle_stage_transcribe">Transcribing Indonesian speech offline...</string>
-    <string name="subtitle_stage_save">Saving SRT subtitle...</string>
-    <string name="subtitle_progress_format">%1$d%%</string>
-    <string name="subtitle_saved">Subtitle saved as SRT</string>
-    <string name="subtitle_failed">Could not create subtitles</string>
-    <string name="subtitle_no_audio">This video has no audio track</string>
-    <string name="subtitle_no_voice">No clear human voice was detected</string>
-    <string name="subtitle_not_mic">Auto Subtitle is only for microphone or human-voice recordings</string>
-    <string name="subtitle_unsupported_device">Auto Subtitle needs an ARM device using the Full edition</string>
-    <string name="subtitle_unsupported_edition">Auto Subtitle is not included in the Universal Lite edition. Install the Full ARM edition for your device to use it.</string>
-    <string name="subtitle_model_missing">The bundled speech model is missing from this build</string>
-    <string name="subtitle_busy">Another subtitle is still being created</string>
-    <string name="subtitle_cancelled">Subtitle creation cancelled</string>
-    <string name="subtitle_unavailable_recording">Finish the current recording before creating subtitles</string>
-    <string name="subtitle_file_missing">The subtitle file could not be found</string>
-    <string name="subtitle_offline_note">Works fully offline for Indonesian microphone speech. Internal game or music audio is skipped.</string>
+    <string name="progress_percent_format">%1$d%%</string>
 
     <!-- v1.2 voice FX deck, volumes, notification -->
     <string name="voice_preset">Voice preset</string>
@@ -196,8 +171,7 @@
     <string name="fx_applies_next">Voice effects will apply from the next recording</string>
     <string name="notif_mic_format">Mic %1$d%%</string>
     <string name="bubble_remove_hint">Release to hide the bubble</string>
-    <string name="subtitle_stage_transcribe_chunk">Transcribing part %1$d of %2$d</string>
-    <string name="subtitle_elapsed_format">Elapsed %1$s</string>
+    <string name="progress_elapsed_format">Elapsed %1$s</string>
 
     <!-- v1.2.1 persistent projection session -->
     <string name="notif_ready">Ready to record</string>
@@ -242,4 +216,17 @@
     <string name="screenshot_bubble">Dedicated screenshot ball</string>
     <string name="screenshot_bubble_desc">Shows a separate camera tab on the screen edge. Tap it for an instant screenshot after capture permission is active; long-press it to hide it.</string>
     <string name="screenshot_bubble_hidden">Screenshot ball hidden. Open RekaminAja to show it again.</string>
+    <string name="screenshot_bubble_hint">Tap for a screenshot</string>
+    <string name="summary_effective_format">%1$d×%2$d • %3$d FPS • %4$s • ≈%5$s/min</string>
+    <string name="summary_adjusted_suffix"> (adjusted for this device)</string>
+    <string name="readiness_all_set">Ready: permissions complete</string>
+    <string name="readiness_missing_format">Needs attention: %1$s</string>
+    <string name="readiness_overlay">overlay</string>
+    <string name="readiness_microphone">microphone</string>
+    <string name="readiness_notifications">notifications</string>
+    <string name="readiness_storage">storage</string>
+    <string name="readiness_camera">camera</string>
+    <string name="readiness_session_active">Capture session active</string>
+    <string name="readiness_session_waiting">Capture permission will be asked when you start</string>
+    <string name="view_image">View</string>
 </resources>

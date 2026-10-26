@@ -16,12 +16,9 @@ Status build dan rilis terbaru tersedia di
 Ambil APK terbaru di halaman [Releases](https://github.com/xykal/RekaminAja/releases),
 lalu install seperti biasa:
 
-- `RekaminAja-vX.Y.Z-full-arm64-v8a.apk` — untuk HP ARM 64-bit modern, termasuk
-  Auto Subtitle offline dan model suaranya.
-- `RekaminAja-vX.Y.Z-full-armeabi-v7a.apk` — untuk HP ARM 32-bit lama, juga
-  termasuk Auto Subtitle offline. Transkripsi akan lebih lambat di hardware lama.
-- `RekaminAja-vX.Y.Z-lite-universal.apk` — edisi kecil universal untuk x86 atau
-  pengguna yang tidak memerlukan Auto Subtitle.
+- `RekaminAja-vX.Y.Z-universal.apk` — satu APK kecil pure Kotlin untuk semua
+  arsitektur yang didukung Android 7.0 ke atas.
+- File `.aab` disediakan untuk distribusi app store dan tidak perlu dipasang manual.
 
 Rencana distribusi: APKPure terlebih dahulu, Google Play menyusul.
 
@@ -34,10 +31,10 @@ Rencana distribusi: APKPure terlebih dahulu, Google Play menyusul.
 | Mikrofon / tanpa suara | Jalur MediaRecorder native yang stabil untuk mode standar |
 | Audio Lab | Efek suara podcast yang sepenuhnya opsional: reduksi noise sistem, noise gate, kompresor, dan penguat mikrofon. Semua mati secara default |
 | Deck Efek Suara | Voice FX 2.0 dengan satu jalur mic live yang konsisten untuk Mikrofon dan Internal + Mikrofon: Super Bersih, Ngebas Podcast, Echo, Bergema, Alien, Robot, Cempreng, transisi preset/gain bebas klik, intensitas 0 yang benar-benar kering, dan volume mic 10-200% |
-| Auto Subtitle | Membuat subtitle SRT bahasa Indonesia dari suara mikrofon setelah perekaman selesai, sepenuhnya offline dengan model Whisper yang dibundel di APK |
 | Jeda dan lanjut | Termasuk kontrol dari notifikasi custom berisi timer, jeda/stop, dan pengatur volume mic |
-| Bola melayang | Bola gaya tab tepi yang setengahnya menyelip keluar layar saat diam; ukuran 34-56dp dan opasitas bisa diatur, chip waktu terpisah saat merekam, ketuk untuk toolbox, tekan-tahan untuk mulai/stop cepat, dan seret ke lingkaran hapus di bawah untuk menyembunyikan |
-| Screenshot | Bola kamera terpisah di tepi layar, screenshot instan selama sesi izin tangkapan aktif, kontrol RekaminAja disembunyikan sesaat agar tidak ikut terfoto, tersimpan di Pictures/RekaminAja |
+| Ringkasan kesiapan | Layar utama menampilkan resolusi/FPS/codec efektif setelah dicek terhadap perangkat, perkiraan ukuran per menit, izin yang belum lengkap, dan status sesi tangkapan |
+| Bola melayang | Bola gaya tab tepi yang setengahnya menyelip keluar layar saat diam; visual mungil dengan target sentuh minimum 48dp, jarak awal antarbola lebih lega, ukuran 34-56dp dan opasitas bisa diatur, chip waktu terpisah saat merekam, ketuk untuk toolbox, tekan-tahan untuk mulai/stop cepat, dan seret ke lingkaran hapus di bawah untuk menyembunyikan |
+| Screenshot | Bola kamera terpisah dengan petunjuk pertama, screenshot instan selama sesi izin tangkapan aktif, dapat diambil saat merekam dari layar utama atau toolbox, kontrol RekaminAja disembunyikan sesaat agar tidak ikut terfoto, lalu tersedia pratinjau notifikasi dengan aksi Lihat dan Bagikan |
 | Facecam | Overlay kamera bundar berbasis Camera2, bisa diseret, tekan-tahan untuk ganti kamera |
 | Gambar di layar | Kuas overlay; coretan ikut terekam, cocok untuk tutorial |
 | Zona Sensor | Kotak hitam yang diatur di editor dan digambar selama merekam, sehingga tersensor permanen di file video |
@@ -70,26 +67,6 @@ yang berubah-ubah. Preset Normal pada volume 100% dengan efek podcast mati adala
 bypass mentah. Bila perangkat menolak jalur live tersebut, aplikasi otomatis kembali
 ke mikrofon standar dan memberi tahu pengguna.
 
-## Auto Subtitle
-
-Auto Subtitle membuat file subtitle `.srt` ber-timestamp dari suara manusia setelah
-rekaman selesai. Buka tombol **Auto Subtitle** di player, atau tekan lama video di
-galeri. Hasilnya dapat ditampilkan sebagai teks saat video diputar, dibagikan, atau
-dibuat ulang. Salinan publik SRT juga diterbitkan ke folder RekaminAja bila perangkat
-mengizinkan.
-
-Fitur ini memang berjalan **setelah perekaman**, bukan saat merekam, agar perekaman
-tetap ringan dan mulus. Transkripsi memakai Whisper multilingual yang berjalan lokal
-dengan model terkuantisasi yang dibundel di edisi Full ARM64 dan armeabi-v7a. Tidak
-ada audio yang diunggah dan aplikasi tetap tidak memiliki izin INTERNET.
-
-Auto Subtitle ditujukan untuk rekaman mikrofon atau internal + mikrofon yang berisi
-suara manusia. Rekaman yang diketahui hanya memakai audio internal atau tanpa suara
-tidak perlu dibuatkan subtitle. Untuk video lama yang sumber audionya tidak diketahui,
-aplikasi memeriksa keberadaan suara sebelum memprosesnya. Perangkat ARM 32-bit lama
-akan memproses lebih lambat; ketepatan hasil bergantung pada kejernihan suara dan
-kebisingan latar.
-
 ## Cara kerja Privacy Shield
 
 Jendela overlay memang ikut tertangkap oleh MediaProjection. RekaminAja memanfaatkan
@@ -108,32 +85,28 @@ perilaku ini alih-alih melawannya:
 
 - Native Kotlin: AGP 9.4.1 (Built-in Kotlin), Gradle 9.6.0, JDK 17
 - `minSdk 24` (Android 7.0), `targetSdk 36` (Android 16), `compileSdk 37` (Android 17)
-- Dependency utama: AndroidX Core, AppCompat, Material, RecyclerView, Kotlin Coroutines,
-  dan modul Whisper Android lokal untuk transkripsi ARM64/armeabi-v7a
+- Dependency utama: AndroidX Core, AppCompat, Material, dan RecyclerView
 - `ScreenRecordService` (foreground service `mediaProjection|microphone|camera`)
   mengikuti aturan Android 14+: FGS dimulai dulu, lalu `registerCallback()`,
-  lalu `createVirtualDisplay()`
+  lalu satu VirtualDisplay persisten dibuat untuk sesi itu
+- VirtualDisplay yang sama diarahkan ulang dengan `resize()` dan `setSurface()`
+  antara encoder dan `ImageReader`, sehingga rekaman berikutnya dan screenshot
+  saat merekam tidak membuat VirtualDisplay berulang
 - Dua engine perekaman: `MediaRecorderEngine` untuk jalur standar, dan
-  `CodecRecorderEngine` (MediaCodec H.264 + AAC + MediaMuxer) untuk audio internal,
-  mode campuran, dan pemrosesan mikrofon Audio Lab
+  `CodecRecorderEngine` (MediaCodec H.264/HEVC + AAC + MediaMuxer) untuk audio
+  internal, mode campuran, dan pemrosesan mikrofon Audio Lab
 - Pemrosesan PCM Audio Lab ditulis khusus di `MicDsp` (high-pass, gate, kompresor, limiter)
-- Auto Subtitle mengekstrak audio menjadi potongan WAV mono 16 kHz, mentranskripsinya
-  per potongan dengan Whisper Tiny Q5_1, lalu menyusun cue SRT yang ringkas
-- Model subtitle diunduh Gradle hanya pada mesin build/CI dari revisi terpaku dan
-  diverifikasi SHA-256 sebelum dibundel ke edisi Full; model biner tidak disimpan di Git
-- Edisi Lite memakai stub subtitle tanpa dependency native/model Whisper agar tetap
-  kecil dan kompatibel universal
 - Seluruh komponen UI digambar sendiri: tombol rekam, toggle, slider, pilihan, dialog,
   kontrol player, dan panel overlay
 - Release: R8 minify dan shrink resources
 
 ## Build dari source
 
-Butuh JDK 17, Android SDK API 37, Build-Tools 37.0.0, NDK 27.2.12479018,
-dan CMake 3.22.1 untuk native Whisper.
+Butuh JDK 17, Android SDK API 37, dan Build-Tools 37.0.0. Project ini pure
+Kotlin dan tidak membutuhkan NDK, CMake, atau submodule native.
 
 ```bash
-git clone --recurse-submodules https://github.com/xykal/RekaminAja.git
+git clone https://github.com/xykal/RekaminAja.git
 cd RekaminAja
 ./gradlew assembleDebug     # APK debug
 ./gradlew assembleRelease   # APK release (butuh signing, lihat docs/BUILD_RELEASE.md)
@@ -145,9 +118,9 @@ APKPure, ada di [docs/BUILD_RELEASE.md](docs/BUILD_RELEASE.md).
 
 ## Roadmap
 
-- Editor lanjutan (teks dan stiker)
-- Rekaman terjadwal dan batas durasi
-- Pilihan encoder HEVC untuk ukuran file lebih kecil
+- Alat pascaproduksi: crop, kompres, ubah kecepatan, ekspor GIF, dan anotasi screenshot
+- Rekaman terjadwal
+- Meter level mikrofon dan tes dengar sebelum merekam
 - Deteksi teks sensitif otomatis (OCR on-device) untuk sensor pintar
 - Publikasi APKPure, lalu Google Play
 
@@ -158,18 +131,17 @@ agar arahnya selaras.
 
 ## Lisensi dan privasi
 
-[MIT](LICENSE) · [Privacy Policy](PRIVACY_POLICY.md) · [Third-Party Notices](THIRD_PARTY_NOTICES.md)
-— tidak ada data yang dikumpulkan.
+[MIT](LICENSE) · [Privacy Policy](PRIVACY_POLICY.md) — tidak ada data yang dikumpulkan.
 
 ---
 
 ### English (short)
 
 **RekaminAja** is a free and open-source Android screen recorder written in native
-Kotlin: HD recording up to 60 FPS, internal audio on Android 10+, internal + mic mix,
-an opt-in Audio Lab that makes a phone microphone sound closer to a podcast mic,
-offline Indonesian auto subtitles generated as timestamped SRT files after recording,
-floating ball, facecam, draw-on-screen, one-tap screenshots, a built-in gallery with
+Kotlin: hardware-aware recording up to UHD and 120 FPS where supported, internal
+audio on Android 10+, internal + mic mix, an opt-in Audio Lab that makes a phone
+microphone sound closer to a podcast mic, floating balls, facecam, draw-on-screen,
+one-tap screenshots including while recording, a built-in gallery with
 lossless trimming, and a Quick Settings tile — plus a Privacy Shield with permanent
 censor zones and auto-pause for your chosen sensitive apps. The interface is a fully
 custom Light Clean design. No watermark, no ads, no tracking, and no INTERNET

@@ -30,6 +30,7 @@ import id.rekaminaja.app.data.Prefs
 import id.rekaminaja.app.overlay.DrawOverlayService
 import id.rekaminaja.app.overlay.FloatingBubbleService
 import id.rekaminaja.app.overlay.ScreenshotBubbleService
+import id.rekaminaja.app.recorder.CaptureCapabilities
 import id.rekaminaja.app.recorder.RecorderState
 import id.rekaminaja.app.recorder.ScreenRecordService
 import id.rekaminaja.app.ui.RecordButton
@@ -45,6 +46,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvRecordLabel: TextView
     private lateinit var btnPause: RekPillButton
     private lateinit var tvSummary: TextView
+    private lateinit var tvReadiness: TextView
     private lateinit var cardOverlayWarn: View
     private lateinit var tvStorage: TextView
     private lateinit var tvRecentEmpty: TextView
@@ -101,6 +103,7 @@ class MainActivity : AppCompatActivity() {
         tvRecordLabel = findViewById(R.id.tvRecordLabel)
         btnPause = findViewById(R.id.btnPause)
         tvSummary = findViewById(R.id.tvSummary)
+        tvReadiness = findViewById(R.id.tvReadiness)
         cardOverlayWarn = findViewById(R.id.cardOverlayWarn)
         tvStorage = findViewById(R.id.tvStorage)
         tvRecentEmpty = findViewById(R.id.tvRecentEmpty)
@@ -124,10 +127,18 @@ class MainActivity : AppCompatActivity() {
         btnRecord.setOnClickListener { onRecordClicked() }
         btnPause.setOnClickListener { sendRecorder(ScreenRecordService.ACTION_TOGGLE_PAUSE) }
         findViewById<RekPillButton>(R.id.btnScreenshot).setOnClickListener {
-            if (RecorderState.isRecording) {
-                Toast.makeText(this, R.string.screenshot_while_recording, Toast.LENGTH_SHORT).show()
-            } else {
-                openConsent(ConsentActivity.MODE_SCREENSHOT)
+            when {
+                RecorderState.state == RecorderState.State.COUNTDOWN -> {
+                    Toast.makeText(
+                        this,
+                        R.string.screenshot_while_recording,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                RecorderState.isRecording -> {
+                    sendRecorder(ScreenRecordService.ACTION_SCREENSHOT)
+                }
+                else -> openConsent(ConsentActivity.MODE_SCREENSHOT)
             }
         }
         findViewById<RekPillButton>(R.id.btnGallery).setOnClickListener {
@@ -424,15 +435,6 @@ class MainActivity : AppCompatActivity() {
         cardOverlayWarn.visibility = if (Util.canOverlay(this)) View.GONE else View.VISIBLE
         updateTiles()
 
-        val resLabel = when (Prefs.resolution) {
-            2160 -> getString(R.string.res_uhd)
-            0 -> getString(R.string.res_native)
-            1440 -> getString(R.string.res_qhd)
-            else -> "${Prefs.resolution}p"
-        }
-        val bitLabel = if (Prefs.bitrateMbps == 0) getString(R.string.bitrate_auto)
-        else "${Prefs.bitrateMbps} Mbps"
-        val codecLabel = if (Prefs.videoCodec == Prefs.CODEC_HEVC) " - HEVC" else ""
         val audioLabel = when (Prefs.audioSource) {
             Prefs.AUDIO_NONE -> getString(R.string.audio_none)
             Prefs.AUDIO_INTERNAL -> getString(R.string.audio_internal)
@@ -455,8 +457,62 @@ class MainActivity : AppCompatActivity() {
             Prefs.micVolume != 100 -> " + " + getString(R.string.notif_mic_format, Prefs.micVolume)
             else -> ""
         }
-        tvSummary.text = "$resLabel - ${Prefs.fps} FPS - $bitLabel$codecLabel\n$audioLabel$fxSuffix"
+
+        // Ringkasan memakai target efektif setelah dibatasi refresh layar dan
+        // encoder perangkat, bukan sekadar nilai preferensi yang diminta user.
+        val plan = CaptureCapabilities.plan(this)
+        val effective = getString(
+            R.string.summary_effective_format,
+            plan.size.width,
+            plan.size.height,
+            plan.fps,
+            plan.codecLabel,
+            Util.formatSize(
+                plan.estimatedBytesPerMinute(Prefs.audioSource != Prefs.AUDIO_NONE)
+            )
+        ) + if (plan.adjusted) getString(R.string.summary_adjusted_suffix) else ""
+        tvSummary.text = "$effective\n$audioLabel$fxSuffix"
         tvStorage.text = getString(R.string.storage_free_format, Util.formatSize(freeBytes()))
+
+        val missing = mutableListOf<String>()
+        if (!Util.canOverlay(this) && (Prefs.floatingBubble || Prefs.screenshotBubble)) {
+            missing += getString(R.string.readiness_overlay)
+        }
+        if (Prefs.audioSource != Prefs.AUDIO_NONE &&
+            !hasPermission(Manifest.permission.RECORD_AUDIO)
+        ) {
+            missing += getString(R.string.readiness_microphone)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            !hasPermission(Manifest.permission.POST_NOTIFICATIONS)
+        ) {
+            missing += getString(R.string.readiness_notifications)
+        }
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
+            !hasPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        ) {
+            missing += getString(R.string.readiness_storage)
+        }
+        if (Prefs.facecamEnabled && !hasPermission(Manifest.permission.CAMERA)) {
+            missing += getString(R.string.readiness_camera)
+        }
+        val readiness = if (missing.isEmpty()) {
+            getString(R.string.readiness_all_set)
+        } else {
+            getString(R.string.readiness_missing_format, missing.joinToString(", "))
+        }
+        val session = if (RecorderState.projectionReady) {
+            getString(R.string.readiness_session_active)
+        } else {
+            getString(R.string.readiness_session_waiting)
+        }
+        tvReadiness.text = "$readiness • $session"
+        tvReadiness.setTextColor(
+            ContextCompat.getColor(
+                this,
+                if (missing.isEmpty()) R.color.accent_green else R.color.accent_amber
+            )
+        )
     }
 
     private fun updateTiles() {

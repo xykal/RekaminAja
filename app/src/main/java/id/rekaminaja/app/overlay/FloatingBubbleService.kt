@@ -56,6 +56,7 @@ class FloatingBubbleService : Service() {
 
     private lateinit var wm: WindowManager
     private var bubble: FrameLayout? = null
+    private var bubbleVisual: FrameLayout? = null
     private var bubbleBg: GradientDrawable? = null
     private var bubbleIcon: ImageView? = null
     private var bubbleParams: WindowManager.LayoutParams? = null
@@ -68,7 +69,8 @@ class FloatingBubbleService : Service() {
     private var removeCircle: FrameLayout? = null
     private var snapAnimator: ValueAnimator? = null
     private var pulseOn = false
-    private var bubbleSizePx = 0
+    private var bubbleSizePx = 0 // Ukuran jendela/area sentuh, minimum 48dp.
+    private var visualSizePx = 0 // Ukuran lingkaran yang benar-benar terlihat.
     private var appliedOpacityPercent = -1
     private var tucked = false
     private var touchMoved = false
@@ -137,6 +139,7 @@ class FloatingBubbleService : Service() {
         removeView(panel)
         removeView(removeTarget)
         bubble = null
+        bubbleVisual = null
         panel = null
         removeTarget = null
         if (instance === this) instance = null
@@ -163,7 +166,9 @@ class FloatingBubbleService : Service() {
     // ---------------------------------------------------------------- bola
 
     private fun createBubble() {
-        val size = dp(Prefs.bubbleSizeDp)
+        val visualSize = dp(Prefs.bubbleSizeDp)
+        val size = visualSize.coerceAtLeast(dp(48))
+        visualSizePx = visualSize
         bubbleSizePx = size
         appliedOpacityPercent = Prefs.bubbleOpacityPercent
         bubbleBg = GradientDrawable(
@@ -177,20 +182,28 @@ class FloatingBubbleService : Service() {
             shape = GradientDrawable.OVAL
             setStroke(dp(1), Color.argb(190, 255, 255, 255))
         }
+        // Root adalah target sentuh minimum 48dp. Lingkaran visual tetap
+        // memakai ukuran pilihan user dan menempel ke sisi layar, sedangkan
+        // sisa area transparan mengarah ke tengah layar agar mudah disentuh.
         val root = FrameLayout(this).apply {
+            alpha = restAlpha()
+            contentDescription = getString(R.string.app_name)
+        }
+        val visual = FrameLayout(this).apply {
             background = bubbleBg
             elevation = dp(6).toFloat()
-            alpha = restAlpha()
         }
+        bubbleVisual = visual
         bubbleIcon = ImageView(this).apply {
             setImageResource(R.drawable.ic_record)
             setColorFilter(Color.WHITE)
         }
-        val iconSize = (size * 0.46f).toInt().coerceAtLeast(dp(14))
-        root.addView(
+        val iconSize = (visualSize * 0.46f).toInt().coerceAtLeast(dp(14))
+        visual.addView(
             bubbleIcon,
             FrameLayout.LayoutParams(iconSize, iconSize, Gravity.CENTER)
         )
+        root.addView(visual, bubbleVisualParams(Prefs.bubbleSide))
 
         val display = Util.realDisplaySize(this)
         val startX = fullEdgeX(Prefs.bubbleSide, size)
@@ -244,6 +257,30 @@ class FloatingBubbleService : Service() {
         return if (lp.x + size / 2 < display.width / 2) 0 else 1
     }
 
+    private fun bubbleVisualParams(side: Int): FrameLayout.LayoutParams {
+        val gravity = (if (side == 0) Gravity.LEFT else Gravity.RIGHT) or
+            Gravity.CENTER_VERTICAL
+        return FrameLayout.LayoutParams(visualSizePx, visualSizePx, gravity)
+    }
+
+    private fun updateBubbleVisualAlignment() {
+        val lp = bubbleParams ?: return
+        val side = currentSide(lp, bubbleSizePx)
+        bubbleVisual?.layoutParams = bubbleVisualParams(side)
+        // Saat menyelip, geser ikon ke potongan lingkaran yang masih terlihat.
+        val iconGravity = when {
+            !tucked -> Gravity.CENTER
+            side == 0 -> Gravity.RIGHT or Gravity.CENTER_VERTICAL
+            else -> Gravity.LEFT or Gravity.CENTER_VERTICAL
+        }
+        val iconSize = (visualSizePx * 0.46f).toInt().coerceAtLeast(dp(14))
+        bubbleIcon?.layoutParams = FrameLayout.LayoutParams(
+            iconSize,
+            iconSize,
+            iconGravity
+        )
+    }
+
     private fun animateBubbleX(targetX: Int, durationMs: Long = 190L) {
         val lp = bubbleParams ?: return
         val view = bubble ?: return
@@ -270,16 +307,17 @@ class FloatingBubbleService : Service() {
     private fun applyBubblePrefsIfChanged() {
         val view = bubble ?: return
         val lp = bubbleParams ?: return
-        val targetSize = dp(Prefs.bubbleSizeDp)
-        if (targetSize != bubbleSizePx) {
+        val targetVisualSize = dp(Prefs.bubbleSizeDp)
+        val targetSize = targetVisualSize.coerceAtLeast(dp(48))
+        if (targetSize != bubbleSizePx || targetVisualSize != visualSizePx) {
             val side = currentSide(lp, bubbleSizePx)
+            visualSizePx = targetVisualSize
             bubbleSizePx = targetSize
             lp.width = targetSize
             lp.height = targetSize
             lp.y = lp.y.coerceIn(minY(), maxY(targetSize))
             lp.x = if (tucked) tuckedEdgeX(side, targetSize) else fullEdgeX(side, targetSize)
-            val iconSize = (targetSize * 0.46f).toInt().coerceAtLeast(dp(14))
-            bubbleIcon?.layoutParams = FrameLayout.LayoutParams(iconSize, iconSize, Gravity.CENTER)
+            updateBubbleVisualAlignment()
             try {
                 wm.updateViewLayout(view, lp)
             } catch (e: Exception) {
@@ -312,6 +350,7 @@ class FloatingBubbleService : Service() {
         Prefs.bubbleSide = side
         Prefs.bubbleY = lp.y
         tucked = true
+        updateBubbleVisualAlignment()
         animateBubbleX(tuckedEdgeX(side, bubbleSizePx), 220L)
         view.animate()?.alpha(restAlpha() * 0.84f)?.setDuration(220)?.start()
     }
@@ -322,6 +361,7 @@ class FloatingBubbleService : Service() {
         val lp = bubbleParams
         if (tucked && lp != null) {
             tucked = false
+            updateBubbleVisualAlignment()
             animateBubbleX(fullEdgeX(currentSide(lp, bubbleSizePx), bubbleSizePx), 170L)
         }
         scheduleIdleDock()
@@ -421,6 +461,7 @@ class FloatingBubbleService : Service() {
         Prefs.bubbleSide = side
         Prefs.bubbleY = lp.y
         tucked = false
+        updateBubbleVisualAlignment()
         animateBubbleX(fullEdgeX(side, size), 190L)
     }
 
@@ -509,7 +550,7 @@ class FloatingBubbleService : Service() {
             shape = GradientDrawable.OVAL
             setStroke(dp(1), Color.argb(190, 255, 255, 255))
         }
-        bubble?.background = bubbleBg
+        bubbleVisual?.background = bubbleBg
     }
 
     private fun ensureTimerChip() {
@@ -898,9 +939,9 @@ class FloatingBubbleService : Service() {
             }
         }
         if (recording) {
-            roundAction(actions2, R.drawable.ic_grid, getString(R.string.open_app),
-                color(R.color.bg_soft), color(R.color.ink)) {
-                openActivity(Intent(this, MainActivity::class.java))
+            roundAction(actions2, R.drawable.ic_screenshot, getString(R.string.screenshot),
+                color(R.color.accent_blue_tint), color(R.color.accent_blue)) {
+                sendRecorder(ScreenRecordService.ACTION_SCREENSHOT)
             }
         } else {
             roundAction(actions2, R.drawable.ic_gallery, getString(R.string.gallery),

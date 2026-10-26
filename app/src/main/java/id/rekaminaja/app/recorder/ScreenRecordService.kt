@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
@@ -20,7 +21,9 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
 import android.os.Looper
+import android.util.Size
 import android.view.Gravity
+import android.view.Surface
 import android.view.WindowManager
 import android.widget.TextView
 import android.widget.Toast
@@ -35,7 +38,6 @@ import id.rekaminaja.app.overlay.FloatingBubbleService
 import id.rekaminaja.app.overlay.OverlayUtil
 import id.rekaminaja.app.overlay.ScreenshotBubbleService
 import id.rekaminaja.app.overlay.PrivacyShieldController
-import id.rekaminaja.app.subtitle.SubtitleStore
 import id.rekaminaja.app.util.Util
 import java.io.File
 import java.util.concurrent.Executors
@@ -56,7 +58,16 @@ class ScreenRecordService : Service() {
     private lateinit var workerHandler: Handler
 
     private var projection: MediaProjection? = null
+
+    // Satu VirtualDisplay persisten per MediaProjection. Rekaman dan
+    // screenshot bergantian memakai display ini lewat resize/setSurface,
+    // bukan createVirtualDisplay() berulang.
+    private val displayLock = Any()
     private var virtualDisplay: VirtualDisplay? = null
+    private var displaySize: Size? = null
+    private var displaySurface: Surface? = null
+    private var recordingSize: Size? = null
+    private var recordingSurface: Surface? = null
     private var screenshotCapturer: ScreenshotCapturer? = null
     @Volatile private var screenshotInProgress = false
     private var engine: RecorderEngine? = null
@@ -119,6 +130,85 @@ class ScreenRecordService : Service() {
             mainHandler.post { Toast.makeText(this, msg, Toast.LENGTH_SHORT).show() }
         }
         shield = PrivacyShieldController(this)
+    }
+
+    // ------------------------------------------ VirtualDisplay persisten
+
+    /** Harus dipanggil sambil memegang [displayLock]. */
+    private fun ensureVirtualDisplayLocked(size: Size): VirtualDisplay? {
+        virtualDisplay?.let { return it }
+        val proj = projection ?: return null
+        val display = try {
+            proj.createVirtualDisplay(
+                "RekaminAja",
+                size.width,
+                size.height,
+                resources.displayMetrics.densityDpi,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                null,
+                null,
+                workerHandler
+            )
+        } catch (e: Exception) {
+            null
+        } ?: return null
+        virtualDisplay = display
+        displaySize = size
+        displaySurface = null
+        return display
+    }
+
+    /** Arahkan satu-satunya VirtualDisplay ke Surface dan ukuran baru. */
+    private fun retargetVirtualDisplayLocked(size: Size, surface: Surface?): Boolean {
+        val display = ensureVirtualDisplayLocked(size) ?: return false
+        return try {
+            if (displaySize != size) {
+                display.resize(
+                    size.width,
+                    size.height,
+                    resources.displayMetrics.densityDpi
+                )
+                displaySize = size
+                displaySurface = null
+            }
+            display.setSurface(surface)
+            displaySurface = surface
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun parkVirtualDisplayLocked() {
+        val display = virtualDisplay ?: return
+        try {
+            display.setSurface(null)
+        } catch (e: Exception) {
+        }
+        displaySurface = null
+    }
+
+    private fun releaseVirtualDisplayLocked() {
+        parkVirtualDisplayLocked()
+        try {
+            virtualDisplay?.release()
+        } catch (e: Exception) {
+        }
+        virtualDisplay = null
+        displaySize = null
+        displaySurface = null
+        recordingSize = null
+        recordingSurface = null
+    }
+
+    private fun cancelActiveScreenshotAndWait() {
+        val capturer = synchronized(displayLock) {
+            val active = screenshotCapturer
+            screenshotCapturer = null
+            screenshotInProgress = false
+            active
+        }
+        capturer?.cancelAndWait()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -198,7 +288,7 @@ class ScreenRecordService : Service() {
     // ---------------------------------------------------------- screenshot
 
     private fun handleScreenshot(intent: Intent) {
-        if (RecorderState.isRecording || RecorderState.state == RecorderState.State.COUNTDOWN) {
+        if (RecorderState.state == RecorderState.State.COUNTDOWN) {
             toast(R.string.screenshot_while_recording)
             return
         }
@@ -206,11 +296,13 @@ class ScreenRecordService : Service() {
 
         val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, 0)
         val data = dataExtra(intent)
-        val useStored = (resultCode == 0 || data == null) &&
-            projection != null && RecorderState.projectionReady
+        // Screenshot di tengah rekaman harus selalu meminjam proyeksi dan
+        // VirtualDisplay aktif; token segar tidak boleh menggantinya.
+        val useStored = projection != null && RecorderState.projectionReady &&
+            (resultCode == 0 || data == null || RecorderState.isRecording)
         if (!useStored && (resultCode == 0 || data == null)) {
             toast(R.string.screenshot_failed)
-            if (!RecorderState.projectionReady) stopSelf()
+            if (!RecorderState.projectionReady && !RecorderState.isRecording) stopSelf()
             return
         }
 
@@ -256,20 +348,82 @@ class ScreenRecordService : Service() {
     }
 
     private fun startScreenshotCapture(proj: MediaProjection) {
-        val capturer = ScreenshotCapturer(this, proj, workerHandler) {
-            screenshotCapturer = null
-            screenshotInProgress = false
-            mainHandler.post {
-                // Pertahankan satu izin tangkapan selama salah satu bola
-                // masih tampil; screenshot/rekaman berikutnya jadi instan.
-                if (FloatingBubbleService.running || ScreenshotBubbleService.running) {
-                    returnToReadyOrStop()
+        val wasRecording = RecorderState.isRecording
+        val captureSize = Util.realDisplaySize(this)
+        val setup = synchronized(displayLock) {
+            if (projection !== proj) {
+                null
+            } else if (wasRecording) {
+                val display = ensureVirtualDisplayLocked(
+                    recordingSize ?: captureSize
+                )
+                val restoreSurface = recordingSurface ?: displaySurface
+                val restoreSize = recordingSize ?: displaySize ?: captureSize
+                if (display == null || restoreSurface == null) {
+                    null
                 } else {
-                    endSession()
+                    Triple(display, restoreSurface, restoreSize)
+                }
+            } else if (retargetVirtualDisplayLocked(captureSize, null)) {
+                Triple(virtualDisplay!!, null, captureSize)
+            } else {
+                null
+            }
+        }
+        if (setup == null) {
+            screenshotInProgress = false
+            toast(R.string.screenshot_failed)
+            if (!wasRecording) returnToReadyOrStop()
+            return
+        }
+
+        lateinit var capturer: ScreenshotCapturer
+        capturer = ScreenshotCapturer(
+            this,
+            setup.first,
+            captureSize,
+            setup.second,
+            setup.third,
+            resources.displayMetrics.densityDpi,
+            workerHandler
+        ) { result ->
+            val current = synchronized(displayLock) {
+                if (screenshotCapturer === capturer) {
+                    screenshotCapturer = null
+                    screenshotInProgress = false
+                    displaySize = setup.third
+                    displaySurface = setup.second
+                    true
+                } else {
+                    false
+                }
+            }
+            if (!current) {
+                result.thumbnail?.recycle()
+            } else {
+                mainHandler.post {
+                    val uri = result.uri
+                    if (result.success && uri != null) {
+                        sendScreenshotNotification(uri, result.thumbnail)
+                    } else {
+                        result.thumbnail?.recycle()
+                    }
+                    if (RecorderState.isRecording) {
+                        // Rekaman tetap berjalan; jangan ubah status sesi.
+                        updateNotification()
+                    } else if (
+                        FloatingBubbleService.running || ScreenshotBubbleService.running
+                    ) {
+                        // Pertahankan satu izin tangkapan selama salah satu
+                        // bola masih tampil agar aksi berikutnya instan.
+                        returnToReadyOrStop()
+                    } else {
+                        endSession()
+                    }
                 }
             }
         }
-        screenshotCapturer = capturer
+        synchronized(displayLock) { screenshotCapturer = capturer }
         capturer.start()
     }
 
@@ -305,6 +459,7 @@ class ScreenRecordService : Service() {
     }
 
     private fun beginRecord(resultCode: Int, data: Intent) {
+        cancelActiveScreenshotAndWait()
         try {
             val manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE)
                 as MediaProjectionManager
@@ -323,6 +478,7 @@ class ScreenRecordService : Service() {
     }
 
     private fun beginRecordInternal(proj: MediaProjection, registerCallback: Boolean) {
+        cancelActiveScreenshotAndWait()
         try {
             // WAJIB sebelum createVirtualDisplay (Android 14+). Sesi pakai
             // ulang sudah terdaftar sejak pertama dibuat.
@@ -334,7 +490,6 @@ class ScreenRecordService : Service() {
             // encoder hardware. UHD/120 FPS diturunkan aman bila HP tidak kuat.
             val plan = CaptureCapabilities.plan(this)
             val capture = plan.size
-            val dpi = resources.displayMetrics.densityDpi
             val fps = plan.fps
             val bitrate = plan.bitrate
             if (plan.adjusted) {
@@ -419,11 +574,16 @@ class ScreenRecordService : Service() {
             }
             engine = eng
             RecorderState.fxLive = eng is CodecRecorderEngine && wantMic
-            virtualDisplay = proj.createVirtualDisplay(
-                "RekaminAja", capture.width, capture.height, dpi,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                surface, null, workerHandler
-            )
+            val attached = synchronized(displayLock) {
+                if (projection !== proj) {
+                    false
+                } else {
+                    recordingSize = capture
+                    recordingSurface = surface
+                    retargetVirtualDisplayLocked(capture, surface)
+                }
+            }
+            if (!attached) throw IllegalStateException("VirtualDisplay gagal dipasang")
 
             RecorderState.set(RecorderState.State.RECORDING)
             updateNotification()
@@ -465,6 +625,7 @@ class ScreenRecordService : Service() {
 
     /** Akhiri sesi tangkapan layar sepenuhnya (izin disimpan dilepas). */
     private fun endSession(fromRevocation: Boolean = false) {
+        cancelActiveScreenshotAndWait()
         mainHandler.removeCallbacks(ticker)
         mainHandler.removeCallbacks(sensitiveWatcher)
         hideCountdown()
@@ -481,11 +642,8 @@ class ScreenRecordService : Service() {
     }
 
     private fun cleanupAfterFailedStart() {
-        try {
-            virtualDisplay?.release()
-        } catch (e: Exception) {
-        }
-        virtualDisplay = null
+        cancelActiveScreenshotAndWait()
+        synchronized(displayLock) { releaseVirtualDisplayLocked() }
         try {
             engine?.stop()
         } catch (e: Exception) {
@@ -510,11 +668,14 @@ class ScreenRecordService : Service() {
             facecam.hide()
         }
         executor.execute {
-            try {
-                virtualDisplay?.release()
-            } catch (e: Exception) {
+            cancelActiveScreenshotAndWait()
+            // Jangan release VirtualDisplay: parkir Surface-nya agar sesi
+            // MediaProjection yang sama dapat langsung merekam lagi.
+            synchronized(displayLock) {
+                parkVirtualDisplayLocked()
+                recordingSize = null
+                recordingSurface = null
             }
-            virtualDisplay = null
             val ok = try {
                 engine?.stop() == true
             } catch (e: Exception) {
@@ -536,11 +697,6 @@ class ScreenRecordService : Service() {
             var uri: android.net.Uri? = null
             if (ok && file != null && name != null) {
                 uri = OutputStore.publishVideo(this, file, name)
-                SubtitleStore.rememberAudioSource(
-                    this,
-                    name,
-                    activeAudioSource ?: (audioOverride ?: Prefs.audioSource)
-                )
             }
             val savedUri = uri
             RecorderState.set(RecorderState.State.IDLE)
@@ -564,6 +720,7 @@ class ScreenRecordService : Service() {
     }
 
     private fun releaseProjection() {
+        synchronized(displayLock) { releaseVirtualDisplayLocked() }
         try {
             projection?.unregisterCallback(projectionCallback)
         } catch (e: Exception) {
@@ -577,6 +734,7 @@ class ScreenRecordService : Service() {
     }
 
     private fun releaseProjectionCallbacksOnly() {
+        synchronized(displayLock) { releaseVirtualDisplayLocked() }
         try {
             projection?.unregisterCallback(projectionCallback)
         } catch (e: Exception) {
@@ -846,6 +1004,72 @@ class ScreenRecordService : Service() {
         nm.notify(DONE_ID, builder.build())
     }
 
+    private fun sendScreenshotNotification(uri: android.net.Uri, thumbnail: Bitmap?) {
+        try {
+            val nm = getSystemService(NotificationManager::class.java)
+            val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "image/*")
+                addFlags(
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        Intent.FLAG_ACTIVITY_NEW_TASK
+                )
+            }
+            val viewPendingIntent = PendingIntent.getActivity(
+                this,
+                9,
+                viewIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "image/png"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            val chooser = Intent.createChooser(
+                shareIntent,
+                getString(R.string.share)
+            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val sharePendingIntent = PendingIntent.getActivity(
+                this,
+                10,
+                chooser,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val builder = NotificationCompat.Builder(this, RekaminApp.CHANNEL_DONE)
+                .setSmallIcon(R.drawable.ic_screenshot)
+                .setContentTitle(getString(R.string.screenshot_saved))
+                .setContentText(getString(R.string.screenshot))
+                .setAutoCancel(true)
+                .setContentIntent(viewPendingIntent)
+                .addAction(
+                    R.drawable.ic_screenshot,
+                    getString(R.string.view_image),
+                    viewPendingIntent
+                )
+                .addAction(
+                    R.drawable.ic_share,
+                    getString(R.string.share),
+                    sharePendingIntent
+                )
+            if (thumbnail != null) {
+                builder.setLargeIcon(thumbnail)
+                builder.setStyle(
+                    NotificationCompat.BigPictureStyle()
+                        .bigPicture(thumbnail)
+                        .bigLargeIcon(null as Bitmap?)
+                )
+            }
+            nm.notify(SCREENSHOT_DONE_ID, builder.build())
+        } catch (e: Exception) {
+            // File screenshot sudah tersimpan; kegagalan notifikasi tidak
+            // boleh mengganggu rekaman yang sedang berjalan.
+        } finally {
+            if (thumbnail != null) {
+                mainHandler.postDelayed({ thumbnail.recycle() }, 5_000)
+            }
+        }
+    }
+
     private fun stopForegroundCompat() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -925,13 +1149,8 @@ class ScreenRecordService : Service() {
 
     override fun onDestroy() {
         mainHandler.removeCallbacksAndMessages(null)
-        screenshotCapturer?.cancel()
-        screenshotCapturer = null
-        screenshotInProgress = false
-        try {
-            virtualDisplay?.release()
-        } catch (e: Exception) {
-        }
+        cancelActiveScreenshotAndWait()
+        synchronized(displayLock) { parkVirtualDisplayLocked() }
         try {
             engine?.stop()
         } catch (e: Exception) {
@@ -963,5 +1182,6 @@ class ScreenRecordService : Service() {
         const val EXTRA_AUDIO_OVERRIDE = "audio_override"
         private const val NOTIF_ID = 1001
         private const val DONE_ID = 2001
+        private const val SCREENSHOT_DONE_ID = 2002
     }
 }

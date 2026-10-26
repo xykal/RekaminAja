@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.IBinder
@@ -17,6 +18,7 @@ import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import id.rekaminaja.app.ConsentActivity
@@ -38,11 +40,16 @@ class ScreenshotBubbleService : Service() {
 
     private lateinit var wm: WindowManager
     private var bubble: FrameLayout? = null
+    private var visual: FrameLayout? = null
     private var icon: ImageView? = null
     private var params: WindowManager.LayoutParams? = null
     private var animator: ValueAnimator? = null
+    private var hintView: TextView? = null
+    private var hintParams: WindowManager.LayoutParams? = null
+    private val hintHideRunnable = Runnable { removeHint() }
 
-    private var bubbleSizePx = 0
+    private var bubbleSizePx = 0 // Ukuran jendela/area sentuh, minimum 48dp.
+    private var visualSizePx = 0
     private var appliedOpacityPercent = -1
     private var tucked = false
     private var touchMoved = false
@@ -84,6 +91,7 @@ class ScreenshotBubbleService : Service() {
         running = true
         handler.post(updater)
         scheduleIdle()
+        showFirstRunHint()
     }
 
     override fun onDestroy() {
@@ -103,6 +111,7 @@ class ScreenshotBubbleService : Service() {
             }
         }
         handler.removeCallbacksAndMessages(null)
+        removeHint()
         animator?.cancel()
         bubble?.let {
             try {
@@ -111,6 +120,8 @@ class ScreenshotBubbleService : Service() {
             }
         }
         bubble = null
+        visual = null
+        icon = null
         params = null
         if (instance === this) instance = null
         running = false
@@ -153,6 +164,12 @@ class ScreenshotBubbleService : Service() {
 
     private fun targetSizePx(): Int = dp(Prefs.bubbleSizeDp.coerceIn(34, 46))
 
+    private fun visualParams(side: Int): FrameLayout.LayoutParams {
+        val gravity = (if (side == 0) Gravity.LEFT else Gravity.RIGHT) or
+            Gravity.CENTER_VERTICAL
+        return FrameLayout.LayoutParams(visualSizePx, visualSizePx, gravity)
+    }
+
     private fun updateIconGravity() {
         val lp = params
         val side = if (lp == null) {
@@ -160,20 +177,100 @@ class ScreenshotBubbleService : Service() {
         } else {
             currentSide(lp, bubbleSizePx)
         }
+        visual?.layoutParams = visualParams(side)
         val gravity = when {
             !tucked -> Gravity.CENTER
             side == 0 -> Gravity.RIGHT or Gravity.CENTER_VERTICAL
             else -> Gravity.LEFT or Gravity.CENTER_VERTICAL
         }
-        val iconSize = (bubbleSizePx * 0.48f).toInt().coerceAtLeast(dp(15))
+        val iconSize = (visualSizePx * 0.48f).toInt().coerceAtLeast(dp(15))
         icon?.layoutParams = FrameLayout.LayoutParams(iconSize, iconSize, gravity)
+        positionHint()
+    }
+
+    private fun showFirstRunHint() {
+        if (Prefs.screenshotBubbleHintShown || bubble == null) return
+        Prefs.screenshotBubbleHintShown = true
+        val hint = TextView(this).apply {
+            text = getString(R.string.screenshot_bubble_hint)
+            textSize = 11.5f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            setTextColor(color(R.color.ink_soft))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(999).toFloat()
+                setColor(Color.argb(246, 255, 255, 255))
+                setStroke(dp(1), color(R.color.line))
+            }
+            elevation = dp(5).toFloat()
+            setPadding(dp(11), dp(6), dp(11), dp(6))
+        }
+        val lp = OverlayUtil.params(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            gravity = Gravity.TOP or Gravity.START,
+            touchable = false
+        )
+        lp.flags = lp.flags or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        hintView = hint
+        hintParams = lp
+        try {
+            wm.addView(hint, lp)
+            positionHint()
+            handler.postDelayed(hintHideRunnable, 4_500)
+        } catch (e: Exception) {
+            hintView = null
+            hintParams = null
+        }
+    }
+
+    private fun positionHint() {
+        val hint = hintView ?: return
+        val hintLp = hintParams ?: return
+        val lp = params ?: return
+        val display = Util.realDisplaySize(this)
+        hint.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        val hintW = hint.measuredWidth.coerceAtLeast(dp(72))
+        val hintH = hint.measuredHeight.coerceAtLeast(dp(26))
+        val side = currentSide(lp, bubbleSizePx)
+        hintLp.x = if (side == 0) {
+            lp.x + bubbleSizePx + dp(6)
+        } else {
+            lp.x - hintW - dp(6)
+        }.coerceIn(0, (display.width - hintW).coerceAtLeast(0))
+        hintLp.y = (lp.y + (bubbleSizePx - hintH) / 2)
+            .coerceIn(minY(), maxY(hintH))
+        try {
+            wm.updateViewLayout(hint, hintLp)
+        } catch (e: Exception) {
+        }
+    }
+
+    private fun removeHint() {
+        handler.removeCallbacks(hintHideRunnable)
+        hintView?.let {
+            try {
+                wm.removeView(it)
+            } catch (e: Exception) {
+            }
+        }
+        hintView = null
+        hintParams = null
     }
 
     private fun createBubble() {
-        val size = targetSizePx()
+        val visualSize = targetSizePx()
+        val size = visualSize.coerceAtLeast(dp(48))
+        visualSizePx = visualSize
         bubbleSizePx = size
         appliedOpacityPercent = Prefs.bubbleOpacityPercent
         val root = FrameLayout(this).apply {
+            alpha = restAlpha()
+            contentDescription = getString(R.string.screenshot)
+        }
+        val circle = FrameLayout(this).apply {
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
                 intArrayOf(
@@ -186,24 +283,34 @@ class ScreenshotBubbleService : Service() {
                 setStroke(dp(1), Color.argb(190, 255, 255, 255))
             }
             elevation = dp(6).toFloat()
-            alpha = restAlpha()
-            contentDescription = getString(R.string.screenshot)
         }
+        visual = circle
         icon = ImageView(this).apply {
             setImageResource(R.drawable.ic_screenshot)
             setColorFilter(Color.WHITE)
         }
-        val iconSize = (size * 0.48f).toInt().coerceAtLeast(dp(15))
-        root.addView(icon, FrameLayout.LayoutParams(iconSize, iconSize, Gravity.CENTER))
+        val iconSize = (visualSize * 0.48f).toInt().coerceAtLeast(dp(15))
+        circle.addView(icon, FrameLayout.LayoutParams(iconSize, iconSize, Gravity.CENTER))
+        val side = Prefs.screenshotBubbleSide.coerceIn(0, 1)
+        root.addView(circle, visualParams(side))
 
         val display = Util.realDisplaySize(this)
-        val side = Prefs.screenshotBubbleSide.coerceIn(0, 1)
-        val startY = if (Prefs.screenshotBubbleY >= 0) {
+        var startY = if (Prefs.screenshotBubbleY >= 0) {
             Prefs.screenshotBubbleY.coerceIn(minY(), maxY(size))
         } else {
-            // Awalnya tepat di bawah posisi bola rekam agar terasa satu set.
+            // Di bawah bola rekam dengan jarak yang cukup untuk dibedakan.
             val base = if (Prefs.bubbleY >= 0) Prefs.bubbleY else (display.height * 0.38f).toInt()
-            (base + dp(52)).coerceIn(minY(), maxY(size))
+            (base + dp(68)).coerceIn(minY(), maxY(size))
+        }
+        if (!Prefs.bubbleSpacingV150) {
+            val mainY = Prefs.bubbleY
+            if (side == Prefs.bubbleSide.coerceIn(0, 1) && mainY >= 0 &&
+                abs(startY - mainY) < dp(62)
+            ) {
+                startY = (mainY + dp(68)).coerceIn(minY(), maxY(size))
+                Prefs.screenshotBubbleY = startY
+            }
+            Prefs.bubbleSpacingV150 = true
         }
         val lp = OverlayUtil.params(
             size,
@@ -231,9 +338,11 @@ class ScreenshotBubbleService : Service() {
         val view = bubble ?: return
         val lp = params ?: return
 
-        val targetSize = targetSizePx()
-        if (targetSize != bubbleSizePx) {
+        val targetVisualSize = targetSizePx()
+        val targetSize = targetVisualSize.coerceAtLeast(dp(48))
+        if (targetSize != bubbleSizePx || targetVisualSize != visualSizePx) {
             val side = currentSide(lp, bubbleSizePx)
+            visualSizePx = targetVisualSize
             bubbleSizePx = targetSize
             lp.width = targetSize
             lp.height = targetSize
@@ -255,6 +364,7 @@ class ScreenshotBubbleService : Service() {
         val shouldHide = hiddenForScreenshot || RecorderState.isRecording ||
             RecorderState.state == RecorderState.State.COUNTDOWN
         if (shouldHide) {
+            if (!hiddenForScreenshot) removeHint()
             if (view.visibility != View.GONE) view.visibility = View.GONE
         } else if (view.visibility != View.VISIBLE) {
             view.visibility = View.VISIBLE
@@ -276,6 +386,7 @@ class ScreenshotBubbleService : Service() {
                     wm.updateViewLayout(view, lp)
                 } catch (e: Exception) {
                 }
+                positionHint()
             }
             start()
         }
@@ -326,6 +437,7 @@ class ScreenshotBubbleService : Service() {
             val size = bubbleSizePx.coerceAtLeast(dp(34))
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
+                    removeHint()
                     animator?.cancel()
                     startX = if (tucked) {
                         fullEdgeX(currentSide(lp, size), size)
@@ -394,7 +506,7 @@ class ScreenshotBubbleService : Service() {
     }
 
     private fun captureScreenshot() {
-        if (RecorderState.isRecording || RecorderState.state == RecorderState.State.COUNTDOWN) {
+        if (RecorderState.state == RecorderState.State.COUNTDOWN) {
             Toast.makeText(this, R.string.screenshot_while_recording, Toast.LENGTH_SHORT).show()
             return
         }
@@ -433,6 +545,7 @@ class ScreenshotBubbleService : Service() {
         hiddenForScreenshot = hidden
         val view = bubble ?: return
         if (hidden) {
+            removeHint()
             handler.removeCallbacks(idleRunnable)
             animator?.cancel()
             view.visibility = View.GONE
