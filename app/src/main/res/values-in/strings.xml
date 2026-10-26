@@ -102,7 +102,7 @@
     <string name="audio_note_old">Catatan: audio internal perlu Android 10+. Di perangkat ini akan beralih ke mikrofon.</string>
     <string name="recording_section">Perekaman</string>
     <string name="countdown">Hitung mundur sebelum merekam</string>
-    <string name="floating_bubble">Tampilkan bola melayang saat merekam</string>
+    <string name="floating_bubble">Aktifkan bola melayang</string>
     <string name="overlay_section">Facecam &amp; overlay</string>
     <string name="facecam_default">Facecam nyala secara bawaan</string>
     <string name="front_camera">Pakai kamera depan</string>
@@ -138,7 +138,7 @@
     <string name="fx_intro">Buat suaramu terdengar seperti mikrofon podcast. Semua mati secara default — pilih preset atau atur sendiri.</string>
     <string name="fx_noise_system">Reduksi noise sistem</string>
     <string name="fx_noise_system_desc">Memakai peredam noise, penghilang gema, dan penguat otomatis perangkatmu bila tersedia</string>
-    <string name="fx_note_route">Berlaku untuk rekaman Mikrofon dan Internal + Mikrofon. Saat efek menyala, mikrofon melewati jalur codec agar suaranya bisa diproses; bila jalur itu tidak tersedia, mikrofon standar otomatis dipakai.</string>
+    <string name="fx_note_route">Mikrofon dan Internal + Mikrofon kini selalu melewati jalur mic live yang sama, sehingga preset, intensitas, dan volume mic konsisten serta dapat diganti selama merekam. Jika perangkat menolak jalur itu, RekaminAja kembali ke mikrofon standar mentah dan deck melayang memberi tahu bahwa efek berlaku pada rekaman berikutnya.</string>
     <string name="podcast_fx">Efek Podcast</string>
     <string name="preset_natural">Natural</string>
     <string name="preset_off">Mati</string>
@@ -224,4 +224,17 @@
     <string name="auto_stop_min_format">%1$d menit</string>
     <string name="hide_bubble_recording">Sembunyikan bola saat merekam</string>
     <string name="hide_bubble_recording_desc">Hasil video bersih tanpa bola melayang. Kendalikan rekaman dari notifikasi selama bola tersembunyi.</string>
+
+    <!-- v1.4.0 Voice FX consistency + XRecorder-style floating ball -->
+    <string name="voice_fx_fallback">Jalur mic live tidak tersedia di perangkat ini. Merekam dengan mikrofon standar mentah.</string>
+    <string name="fx_live_format">Efek live: %1$s - intensitas %2$d%% - mic %3$d%%</string>
+    <string name="fx_ready_format">Suara siap: %1$s - intensitas %2$d%% - mic %3$d%%</string>
+    <string name="bubble_customize">Kustomisasi bola melayang</string>
+    <string name="bubble_edge_tuck">Selipkan ke tepi layar</string>
+    <string name="bubble_edge_tuck_desc">Setelah beberapa detik diam, setengah bola bergeser keluar layar seperti tab samping. Ketuk bagian yang terlihat untuk mengembangkannya.</string>
+    <string name="bubble_size">Ukuran bola melayang</string>
+    <string name="bubble_opacity">Opasitas bola melayang</string>
+    <string name="bubble_show_timer">Tampilkan chip waktu rekaman</string>
+    <string name="bubble_show_timer_desc">Menampilkan pil waktu berjalan di samping bola selama merekam</string>
+    <string name="bubble_customize_note">Ketuk untuk membuka toolbox. Tekan-tahan bola untuk mulai atau berhenti merekam dengan cepat. Seret ke tepi kiri/kanan, atau ke lingkaran hapus di bawah untuk menyembunyikannya.</string>
 </resources>

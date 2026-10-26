@@ -33,10 +33,10 @@ Rencana distribusi: APKPure terlebih dahulu, Google Play menyusul.
 | Audio internal | Android 10+ melalui AudioPlaybackCapture, termasuk mode internal + mikrofon |
 | Mikrofon / tanpa suara | Jalur MediaRecorder native yang stabil untuk mode standar |
 | Audio Lab | Efek suara podcast yang sepenuhnya opsional: reduksi noise sistem, noise gate, kompresor, dan penguat mikrofon. Semua mati secara default |
-| Deck Efek Suara | Preset suara mic live dari panel melayang: Super Bersih, Ngebas Podcast, Echo, Bergema, Alien, Robot, Cempreng, plus intensitas dan volume mic 10-200% |
+| Deck Efek Suara | Voice FX 2.0 dengan satu jalur mic live yang konsisten untuk Mikrofon dan Internal + Mikrofon: Super Bersih, Ngebas Podcast, Echo, Bergema, Alien, Robot, Cempreng, transisi preset/gain bebas klik, intensitas 0 yang benar-benar kering, dan volume mic 10-200% |
 | Auto Subtitle | Membuat subtitle SRT bahasa Indonesia dari suara mikrofon setelah perekaman selesai, sepenuhnya offline dengan model Whisper yang dibundel di APK |
 | Jeda dan lanjut | Termasuk kontrol dari notifikasi custom berisi timer, jeda/stop, dan pengatur volume mic |
-| Bola melayang | Bola kecil 38dp yang menempel di tepi kiri/kanan; seret ke lingkaran hapus di bawah untuk menyembunyikan. Panel deck berisi aksi bulat, Deck Efek Suara, volume mic, volume HP, plus opsi sembunyikan otomatis selama merekam dan auto-stop 1-60 menit |
+| Bola melayang | Bola gaya tab tepi yang setengahnya menyelip keluar layar saat diam; ukuran 34-56dp dan opasitas bisa diatur, chip waktu terpisah saat merekam, ketuk untuk toolbox, tekan-tahan untuk mulai/stop cepat, dan seret ke lingkaran hapus di bawah untuk menyembunyikan |
 | Screenshot | Sekali ketuk, tersimpan di Pictures/RekaminAja |
 | Facecam | Overlay kamera bundar berbasis Camera2, bisa diseret, tekan-tahan untuk ganti kamera |
 | Gambar di layar | Kuas overlay; coretan ikut terekam, cocok untuk tutorial |
@@ -64,10 +64,11 @@ mikrofon podcast:
 - Tersedia preset Off, Natural, Podcast, dan Studio, atau atur sendiri tiap efek dan
   penguat mikrofonnya.
 
-Semua efek **mati secara default**. Selama tidak dinyalakan, RekaminAja memakai jalur
-mikrofon standar apa adanya. Saat efek menyala, mikrofon melewati jalur codec agar
-suaranya bisa diproses; bila jalur codec tidak tersedia di perangkat, aplikasi
-otomatis kembali ke jalur standar.
+Semua efek **mati secara default**. Mikrofon dan Internal + Mikrofon selalu melewati
+jalur mic live yang sama agar preset dapat diganti di tengah rekaman tanpa perilaku
+yang berubah-ubah. Preset Normal pada volume 100% dengan efek podcast mati adalah
+bypass mentah. Bila perangkat menolak jalur live tersebut, aplikasi otomatis kembali
+ke mikrofon standar dan memberi tahu pengguna.
 
 ## Auto Subtitle
 

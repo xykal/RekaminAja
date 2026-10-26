@@ -122,6 +122,26 @@ object Prefs {
         get() = sp.getInt("bubble_y", -1)
         set(v) = sp.edit().putInt("bubble_y", v).apply()
 
+    /** Gaya XRecorder: setelah diam, setengah bola menyelip ke luar tepi layar. */
+    var bubbleEdgeTuck: Boolean
+        get() = sp.getBoolean("bubble_edge_tuck", true)
+        set(v) = sp.edit().putBoolean("bubble_edge_tuck", v).apply()
+
+    /** Ukuran bola dalam dp. Default tetap mungil 38dp seperti permintaan sebelumnya. */
+    var bubbleSizeDp: Int
+        get() = sp.getInt("bubble_size_dp", 38).coerceIn(34, 56)
+        set(v) = sp.edit().putInt("bubble_size_dp", v.coerceIn(34, 56)).apply()
+
+    /** Opasitas dasar bola sebelum efek redup/tuck saat idle. */
+    var bubbleOpacityPercent: Int
+        get() = sp.getInt("bubble_opacity", 92).coerceIn(35, 100)
+        set(v) = sp.edit().putInt("bubble_opacity", v.coerceIn(35, 100)).apply()
+
+    /** Chip waktu terpisah di samping bola selama merekam. */
+    var bubbleShowTimer: Boolean
+        get() = sp.getBoolean("bubble_show_timer", true)
+        set(v) = sp.edit().putBoolean("bubble_show_timer", v).apply()
+
     var countdownSec: Int
         get() = sp.getInt("countdown", 3)
         set(v) = sp.edit().putInt("countdown", v).apply()

@@ -427,7 +427,22 @@ class MainActivity : AppCompatActivity() {
             Prefs.AUDIO_MIX -> getString(R.string.audio_mix)
             else -> getString(R.string.audio_mic)
         }
-        val fxSuffix = if (Prefs.anyAudioFx) " + " + getString(R.string.podcast_fx) else ""
+        val voicePresetRes = when (Prefs.voicePreset) {
+            "clean" -> R.string.fx_preset_clean
+            "bass" -> R.string.fx_preset_bass
+            "echo" -> R.string.fx_preset_echo
+            "reverb" -> R.string.fx_preset_reverb
+            "alien" -> R.string.fx_preset_alien
+            "robot" -> R.string.fx_preset_robot
+            "chipmunk" -> R.string.fx_preset_chipmunk
+            else -> 0
+        }
+        val fxSuffix = when {
+            voicePresetRes != 0 -> " + " + getString(voicePresetRes)
+            Prefs.anyAudioFx -> " + " + getString(R.string.podcast_fx)
+            Prefs.micVolume != 100 -> " + " + getString(R.string.notif_mic_format, Prefs.micVolume)
+            else -> ""
+        }
         tvSummary.text = "$resLabel - ${Prefs.fps} FPS - $bitLabel$codecLabel\n$audioLabel$fxSuffix"
         tvStorage.text = getString(R.string.storage_free_format, Util.formatSize(freeBytes()))
     }
@@ -453,7 +468,7 @@ class MainActivity : AppCompatActivity() {
                     R.string.apps_count_format, Prefs.sensitivePackages.size
                 )
                 ToolKind.PODCAST -> getString(
-                    if (Prefs.anyAudioFx) R.string.state_on else R.string.state_off
+                    if (Prefs.micFxActive) R.string.state_on else R.string.state_off
                 )
             }
         }

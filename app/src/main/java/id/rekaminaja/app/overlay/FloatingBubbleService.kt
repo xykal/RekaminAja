@@ -12,6 +12,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
@@ -26,8 +27,10 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import id.rekaminaja.app.CensorEditorActivity
 import id.rekaminaja.app.ConsentActivity
+import id.rekaminaja.app.GalleryActivity
 import id.rekaminaja.app.MainActivity
 import id.rekaminaja.app.R
+import id.rekaminaja.app.SettingsActivity
 import id.rekaminaja.app.data.Prefs
 import id.rekaminaja.app.recorder.RecorderState
 import id.rekaminaja.app.recorder.ScreenRecordService
@@ -39,13 +42,15 @@ import kotlin.math.abs
 import kotlin.math.hypot
 
 /**
- * Bola melayang RekaminAja ala XRecorder:
- * - kecil (38dp) dan selalu menempel di tepi kiri/kanan (snap beranimasi),
+ * Bola melayang RekaminAja dengan pola interaksi ala XRecorder:
+ * - menempel di tepi, lalu setengahnya menyelip keluar layar saat idle,
+ * - ketuk untuk toolbox; tekan-tahan untuk mulai/stop cepat,
+ * - chip timer terpisah di samping bola saat merekam,
  * - seret ke lingkaran hapus di bawah-tengah untuk menyembunyikan bola,
- * - panel deck berisi aksi bulat, Deck Efek Suara (preset + intensitas),
- *   serta pengatur volume mic dan volume HP.
+ * - panel berisi aksi bulat, Deck Efek Suara, volume mic, dan volume HP.
  *
- * Posisi terakhir (sisi + Y) diingat antar sesi lewat [Prefs].
+ * Ukuran/opasitas/perilaku tuck dapat dikustomisasi dari Settings. Posisi
+ * terakhir (sisi + Y) diingat antar sesi lewat [Prefs].
  */
 class FloatingBubbleService : Service() {
 
@@ -53,19 +58,39 @@ class FloatingBubbleService : Service() {
     private var bubble: FrameLayout? = null
     private var bubbleBg: GradientDrawable? = null
     private var bubbleIcon: ImageView? = null
-    private var bubbleTimer: TextView? = null
     private var bubbleParams: WindowManager.LayoutParams? = null
+    private var timerChip: LinearLayout? = null
+    private var timerChipParams: WindowManager.LayoutParams? = null
+    private var timerDot: View? = null
+    private var timerText: TextView? = null
     private var panel: LinearLayout? = null
     private var removeTarget: LinearLayout? = null
     private var removeCircle: FrameLayout? = null
     private var snapAnimator: ValueAnimator? = null
     private var pulseOn = false
+    private var bubbleSizePx = 0
+    private var appliedOpacityPercent = -1
+    private var tucked = false
+    private var touchMoved = false
+    private var touchActive = false
+    private var longPressed = false
 
     private val handler = Handler(Looper.getMainLooper())
-    private val dimRunnable = Runnable { bubble?.animate()?.alpha(0.55f)?.setDuration(250)?.start() }
+    private val idleRunnable = Runnable { dockBubbleIdle() }
+    private val longPressRunnable = Runnable {
+        if (!touchMoved && bubble != null) {
+            longPressed = true
+            try {
+                bubble?.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            } catch (e: Exception) {
+            }
+            quickToggleRecording()
+        }
+    }
 
     private val updater = object : Runnable {
         override fun run() {
+            applyBubblePrefsIfChanged()
             updateBubbleVisual()
             handler.postDelayed(this, 500)
         }
@@ -80,11 +105,11 @@ class FloatingBubbleService : Service() {
             return
         }
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        VoiceFxState.sync(Prefs.voicePreset, Prefs.fxIntensity, Prefs.micVolume)
+        VoiceFxState.syncFromPrefs()
         createBubble()
         running = true
         handler.post(updater)
-        scheduleDim()
+        scheduleIdleDock()
     }
 
     override fun onDestroy() {
@@ -133,45 +158,37 @@ class FloatingBubbleService : Service() {
     // ---------------------------------------------------------------- bola
 
     private fun createBubble() {
-        val size = dp(38)
+        val size = dp(Prefs.bubbleSizeDp)
+        bubbleSizePx = size
+        appliedOpacityPercent = Prefs.bubbleOpacityPercent
         bubbleBg = GradientDrawable(
             GradientDrawable.Orientation.TL_BR,
-            intArrayOf(Color.WHITE, color(R.color.bg_soft))
+            intArrayOf(
+                Color.rgb(0xFF, 0x6A, 0x3D),
+                color(R.color.brand),
+                color(R.color.accent_violet)
+            )
         ).apply {
             shape = GradientDrawable.OVAL
-            setStroke(dp(1), color(R.color.line))
+            setStroke(dp(1), Color.argb(190, 255, 255, 255))
         }
         val root = FrameLayout(this).apply {
             background = bubbleBg
-            elevation = dp(5).toFloat()
-        }
-        val inner = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
+            elevation = dp(6).toFloat()
+            alpha = restAlpha()
         }
         bubbleIcon = ImageView(this).apply {
             setImageResource(R.drawable.ic_record)
-            setColorFilter(color(R.color.brand))
+            setColorFilter(Color.WHITE)
         }
-        inner.addView(bubbleIcon, LinearLayout.LayoutParams(dp(15), dp(15)))
-        bubbleTimer = TextView(this).apply {
-            setTextColor(Color.WHITE)
-            textSize = 6.5f
-            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-            gravity = Gravity.CENTER
-            visibility = View.GONE
-        }
-        inner.addView(bubbleTimer)
+        val iconSize = (size * 0.46f).toInt().coerceAtLeast(dp(14))
         root.addView(
-            inner,
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            )
+            bubbleIcon,
+            FrameLayout.LayoutParams(iconSize, iconSize, Gravity.CENTER)
         )
 
         val display = Util.realDisplaySize(this)
-        val startX = if (Prefs.bubbleSide == 0) 0 else display.width - size
+        val startX = fullEdgeX(Prefs.bubbleSide, size)
         val startY = if (Prefs.bubbleY >= 0) {
             Prefs.bubbleY.coerceIn(minY(), maxY(size))
         } else {
@@ -181,8 +198,10 @@ class FloatingBubbleService : Service() {
             size, size, x = startX, y = startY,
             gravity = Gravity.TOP or Gravity.START
         )
+        // Diperlukan agar setengah bola boleh menyelip keluar tepi layar.
+        lp.flags = lp.flags or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
         bubbleParams = lp
-        attachDrag(root, lp, size)
+        attachDrag(root, lp)
         try {
             wm.addView(root, lp)
             bubble = root
@@ -198,66 +217,193 @@ class FloatingBubbleService : Service() {
         return (display.height - size - dp(10)).coerceAtLeast(minY())
     }
 
-    private fun scheduleDim() {
-        handler.removeCallbacks(dimRunnable)
-        handler.postDelayed(dimRunnable, 2_500)
+    private fun restAlpha(): Float = Prefs.bubbleOpacityPercent / 100f
+
+    private fun fullEdgeX(side: Int, size: Int): Int {
+        val display = Util.realDisplaySize(this)
+        return if (side == 0) 0 else display.width - size
+    }
+
+    private fun tuckedEdgeX(side: Int, size: Int): Int {
+        val display = Util.realDisplaySize(this)
+        // Sisakan sekitar 52% bola sebagai tab sentuh di tepi layar.
+        return if (side == 0) {
+            -(size * 0.48f).toInt()
+        } else {
+            display.width - (size * 0.52f).toInt()
+        }
+    }
+
+    private fun currentSide(lp: WindowManager.LayoutParams, size: Int): Int {
+        val display = Util.realDisplaySize(this)
+        return if (lp.x + size / 2 < display.width / 2) 0 else 1
+    }
+
+    private fun animateBubbleX(targetX: Int, durationMs: Long = 190L) {
+        val lp = bubbleParams ?: return
+        val view = bubble ?: return
+        snapAnimator?.cancel()
+        if (lp.x == targetX) {
+            positionTimerChip()
+            return
+        }
+        snapAnimator = ValueAnimator.ofInt(lp.x, targetX).apply {
+            duration = durationMs
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { anim ->
+                lp.x = anim.animatedValue as Int
+                try {
+                    wm.updateViewLayout(view, lp)
+                } catch (e: Exception) {
+                }
+                positionTimerChip()
+            }
+            start()
+        }
+    }
+
+    private fun applyBubblePrefsIfChanged() {
+        val view = bubble ?: return
+        val lp = bubbleParams ?: return
+        val targetSize = dp(Prefs.bubbleSizeDp)
+        if (targetSize != bubbleSizePx) {
+            val side = currentSide(lp, bubbleSizePx)
+            bubbleSizePx = targetSize
+            lp.width = targetSize
+            lp.height = targetSize
+            lp.y = lp.y.coerceIn(minY(), maxY(targetSize))
+            lp.x = if (tucked) tuckedEdgeX(side, targetSize) else fullEdgeX(side, targetSize)
+            val iconSize = (targetSize * 0.46f).toInt().coerceAtLeast(dp(14))
+            bubbleIcon?.layoutParams = FrameLayout.LayoutParams(iconSize, iconSize, Gravity.CENTER)
+            try {
+                wm.updateViewLayout(view, lp)
+            } catch (e: Exception) {
+            }
+            positionTimerChip()
+        }
+        val opacity = Prefs.bubbleOpacityPercent
+        if (opacity != appliedOpacityPercent) {
+            appliedOpacityPercent = opacity
+            view.animate()?.alpha(restAlpha() * if (tucked) 0.84f else 1f)
+                ?.setDuration(140)?.start()
+        }
+        if (!Prefs.bubbleEdgeTuck && tucked) wakeBubble()
+    }
+
+    private fun scheduleIdleDock() {
+        handler.removeCallbacks(idleRunnable)
+        handler.postDelayed(idleRunnable, 2_800)
+    }
+
+    private fun dockBubbleIdle() {
+        val view = bubble ?: return
+        val lp = bubbleParams ?: return
+        if (view.visibility != View.VISIBLE || panel != null || removeTarget != null || touchActive) return
+        if (!Prefs.bubbleEdgeTuck) {
+            view.animate()?.alpha(restAlpha() * 0.58f)?.setDuration(250)?.start()
+            return
+        }
+        val side = currentSide(lp, bubbleSizePx)
+        Prefs.bubbleSide = side
+        Prefs.bubbleY = lp.y
+        tucked = true
+        animateBubbleX(tuckedEdgeX(side, bubbleSizePx), 220L)
+        view.animate()?.alpha(restAlpha() * 0.84f)?.setDuration(220)?.start()
     }
 
     private fun wakeBubble() {
-        bubble?.animate()?.alpha(1f)?.setDuration(150)?.start()
-        scheduleDim()
+        handler.removeCallbacks(idleRunnable)
+        bubble?.animate()?.alpha(restAlpha())?.setDuration(150)?.start()
+        val lp = bubbleParams
+        if (tucked && lp != null) {
+            tucked = false
+            animateBubbleX(fullEdgeX(currentSide(lp, bubbleSizePx), bubbleSizePx), 170L)
+        }
+        scheduleIdleDock()
+    }
+
+    private fun quickToggleRecording() {
+        closePanel()
+        wakeBubble()
+        if (RecorderState.isRecording || RecorderState.state == RecorderState.State.COUNTDOWN) {
+            sendRecorder(ScreenRecordService.ACTION_STOP)
+        } else if (RecorderState.projectionReady) {
+            sendRecorder(ScreenRecordService.ACTION_START)
+        } else {
+            openConsent(ConsentActivity.MODE_RECORD)
+        }
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun attachDrag(view: View, lp: WindowManager.LayoutParams, size: Int) {
+    private fun attachDrag(view: View, lp: WindowManager.LayoutParams) {
         var startX = 0
         var startY = 0
         var touchX = 0f
         var touchY = 0f
-        var moved = false
         view.setOnTouchListener { _, event ->
             val display = Util.realDisplaySize(this)
+            val size = bubbleSizePx.coerceAtLeast(dp(34))
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     snapAnimator?.cancel()
-                    startX = lp.x; startY = lp.y
+                    val wasTucked = tucked
+                    startX = if (wasTucked) {
+                        fullEdgeX(currentSide(lp, size), size)
+                    } else {
+                        lp.x
+                    }
+                    startY = lp.y
                     touchX = event.rawX; touchY = event.rawY
-                    moved = false
+                    touchMoved = false
+                    touchActive = true
+                    longPressed = false
                     wakeBubble()
+                    handler.removeCallbacks(longPressRunnable)
+                    handler.postDelayed(longPressRunnable, 550)
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = (event.rawX - touchX).toInt()
                     val dy = (event.rawY - touchY).toInt()
                     if (abs(dx) > dp(6) || abs(dy) > dp(6)) {
-                        if (!moved) {
+                        if (!touchMoved) {
+                            handler.removeCallbacks(longPressRunnable)
+                            snapAnimator?.cancel()
                             closePanel()
                             showRemoveTarget()
                         }
-                        moved = true
+                        touchMoved = true
                     }
-                    if (moved) {
-                        lp.x = (startX + dx).coerceIn(0, display.width - size)
+                    if (touchMoved) {
+                        lp.x = (startX + dx).coerceIn(
+                            -(size / 2), display.width - size / 2
+                        )
                         lp.y = (startY + dy).coerceIn(minY(), maxY(size))
                         try {
                             wm.updateViewLayout(view, lp)
                         } catch (e: Exception) {
                         }
+                        positionTimerChip()
                         updateRemoveHover(lp, size)
                     }
                     true
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    val overRemove = moved && isOverRemoveTarget(lp, size)
+                    handler.removeCallbacks(longPressRunnable)
+                    val overRemove = touchMoved && isOverRemoveTarget(lp, size)
                     hideRemoveTarget()
-                    if (!moved) {
+                    if (longPressed) {
+                        longPressed = false
+                    } else if (!touchMoved) {
                         togglePanel()
                     } else if (overRemove) {
                         stopSelf()
                     } else {
                         snapToEdge(lp, size)
                     }
-                    scheduleDim()
+                    touchMoved = false
+                    touchActive = false
+                    scheduleIdleDock()
                     true
                 }
                 else -> false
@@ -266,25 +412,11 @@ class FloatingBubbleService : Service() {
     }
 
     private fun snapToEdge(lp: WindowManager.LayoutParams, size: Int) {
-        val display = Util.realDisplaySize(this)
-        val toLeft = (lp.x + size / 2) < display.width / 2
-        val targetX = if (toLeft) 0 else display.width - size
-        Prefs.bubbleSide = if (toLeft) 0 else 1
+        val side = currentSide(lp, size)
+        Prefs.bubbleSide = side
         Prefs.bubbleY = lp.y
-        val fromX = lp.x
-        snapAnimator?.cancel()
-        snapAnimator = ValueAnimator.ofInt(fromX, targetX).apply {
-            duration = 190
-            interpolator = DecelerateInterpolator()
-            addUpdateListener { anim ->
-                lp.x = anim.animatedValue as Int
-                try {
-                    bubble?.let { wm.updateViewLayout(it, lp) }
-                } catch (e: Exception) {
-                }
-            }
-            start()
-        }
+        tucked = false
+        animateBubbleX(fullEdgeX(side, size), 190L)
     }
 
     // ------------------------------------------------------ zona hapus bola
@@ -365,14 +497,98 @@ class FloatingBubbleService : Service() {
     private var lastVisualState: RecorderState.State? = null
 
     /** setColors() baru ada di API 29, jadi gradasi dibuat ulang saat state berubah. */
-    private fun applyBubbleGradient(from: Int, to: Int) {
+    private fun applyBubbleGradient(vararg colors: Int) {
         bubbleBg = GradientDrawable(
-            GradientDrawable.Orientation.TL_BR, intArrayOf(from, to)
+            GradientDrawable.Orientation.TL_BR, colors
         ).apply {
             shape = GradientDrawable.OVAL
-            setStroke(dp(1), color(R.color.line))
+            setStroke(dp(1), Color.argb(190, 255, 255, 255))
         }
         bubble?.background = bubbleBg
+    }
+
+    private fun ensureTimerChip() {
+        if (timerChip != null) return
+        val dot = View(this).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(color(R.color.brand))
+            }
+        }
+        timerDot = dot
+        val text = TextView(this).apply {
+            setTextColor(Color.WHITE)
+            textSize = 11f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        timerText = text
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply {
+                cornerRadius = dp(999).toFloat()
+                setColor(Color.argb(232, 23, 24, 28))
+                setStroke(dp(1), Color.argb(90, 255, 255, 255))
+            }
+            elevation = dp(5).toFloat()
+            setPadding(dp(8), dp(5), dp(9), dp(5))
+        }
+        root.addView(dot, LinearLayout.LayoutParams(dp(7), dp(7)))
+        root.addView(text, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { marginStart = dp(5) })
+        val lp = OverlayUtil.params(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            gravity = Gravity.TOP or Gravity.START,
+            touchable = false
+        )
+        lp.flags = lp.flags or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        try {
+            wm.addView(root, lp)
+            timerChip = root
+            timerChipParams = lp
+            root.alpha = 0f
+            root.animate().alpha(1f).setDuration(150).start()
+        } catch (e: Exception) {
+            timerDot = null
+            timerText = null
+        }
+    }
+
+    private fun removeTimerChip() {
+        removeView(timerChip)
+        timerChip = null
+        timerChipParams = null
+        timerDot = null
+        timerText = null
+    }
+
+    private fun positionTimerChip() {
+        val chip = timerChip ?: return
+        val chipLp = timerChipParams ?: return
+        val lp = bubbleParams ?: return
+        val display = Util.realDisplaySize(this)
+        chip.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        val chipW = chip.measuredWidth.coerceAtLeast(dp(48))
+        val chipH = chip.measuredHeight.coerceAtLeast(dp(22))
+        val side = currentSide(lp, bubbleSizePx)
+        chipLp.x = if (side == 0) {
+            lp.x + bubbleSizePx + dp(5)
+        } else {
+            lp.x - chipW - dp(5)
+        }.coerceIn(0, (display.width - chipW).coerceAtLeast(0))
+        chipLp.y = (lp.y + (bubbleSizePx - chipH) / 2)
+            .coerceIn(minY(), (display.height - chipH - dp(8)).coerceAtLeast(minY()))
+        try {
+            wm.updateViewLayout(chip, chipLp)
+        } catch (e: Exception) {
+        }
     }
 
     private fun updateBubbleVisual() {
@@ -380,6 +596,7 @@ class FloatingBubbleService : Service() {
         val shouldHide = Prefs.hideBubbleWhileRecording && RecorderState.isRecording
         if (shouldHide) {
             if (panel != null) closePanel()
+            removeTimerChip()
             if (bubble?.visibility != View.GONE) bubble?.visibility = View.GONE
             return
         } else if (bubble?.visibility != View.VISIBLE) {
@@ -389,30 +606,51 @@ class FloatingBubbleService : Service() {
         if (state != lastVisualState) {
             lastVisualState = state
             when (state) {
-                RecorderState.State.RECORDING ->
-                    applyBubbleGradient(color(R.color.brand), color(R.color.brand_deep))
-                RecorderState.State.PAUSED ->
-                    applyBubbleGradient(Color.rgb(0xF5, 0xA6, 0x23), color(R.color.bubble_paused))
-                else -> applyBubbleGradient(Color.WHITE, color(R.color.bg_soft))
+                RecorderState.State.PAUSED -> {
+                    applyBubbleGradient(
+                        Color.rgb(0xF5, 0xA6, 0x23),
+                        color(R.color.bubble_paused)
+                    )
+                    bubbleIcon?.setImageResource(R.drawable.ic_pause)
+                }
+                else -> {
+                    applyBubbleGradient(
+                        Color.rgb(0xFF, 0x6A, 0x3D),
+                        color(R.color.brand),
+                        color(R.color.accent_violet)
+                    )
+                    bubbleIcon?.setImageResource(R.drawable.ic_record)
+                }
             }
+            bubbleIcon?.setColorFilter(Color.WHITE)
         }
         when (state) {
-            RecorderState.State.RECORDING -> {
-                bubbleIcon?.setColorFilter(Color.WHITE)
-                bubbleTimer?.visibility = View.VISIBLE
-                bubbleTimer?.text = Util.formatDuration(RecorderState.elapsedMs())
-                pulseOn = !pulseOn
-                val s = if (pulseOn) 1.14f else 1f
-                bubbleIcon?.animate()?.scaleX(s)?.scaleY(s)?.setDuration(450)?.start()
-            }
-            RecorderState.State.PAUSED -> {
-                bubbleIcon?.setColorFilter(Color.WHITE)
-                bubbleTimer?.visibility = View.VISIBLE
-                bubbleTimer?.text = Util.formatDuration(RecorderState.elapsedMs())
+            RecorderState.State.RECORDING, RecorderState.State.PAUSED -> {
+                if (Prefs.bubbleShowTimer) {
+                    ensureTimerChip()
+                    timerText?.text = Util.formatDuration(RecorderState.elapsedMs())
+                    timerDot?.background = GradientDrawable().apply {
+                        shape = GradientDrawable.OVAL
+                        setColor(
+                            if (state == RecorderState.State.PAUSED) {
+                                color(R.color.bubble_paused)
+                            } else {
+                                color(R.color.brand)
+                            }
+                        )
+                    }
+                    positionTimerChip()
+                } else {
+                    removeTimerChip()
+                }
+                if (state == RecorderState.State.RECORDING) {
+                    pulseOn = !pulseOn
+                    val s = if (pulseOn) 1.13f else 1f
+                    bubbleIcon?.animate()?.scaleX(s)?.scaleY(s)?.setDuration(450)?.start()
+                }
             }
             else -> {
-                bubbleIcon?.setColorFilter(color(R.color.brand))
-                bubbleTimer?.visibility = View.GONE
+                removeTimerChip()
                 bubbleIcon?.animate()?.scaleX(1f)?.scaleY(1f)?.setDuration(150)?.start()
             }
         }
@@ -425,8 +663,10 @@ class FloatingBubbleService : Service() {
     }
 
     private fun closePanel() {
+        val wasOpen = panel != null
         removeView(panel)
         panel = null
+        if (wasOpen) scheduleIdleDock()
     }
 
     private fun cardBackground(): GradientDrawable = GradientDrawable().apply {
@@ -481,7 +721,19 @@ class FloatingBubbleService : Service() {
         )
     }
 
+    private fun voicePresetLabelRes(preset: VoicePreset): Int = when (preset) {
+        VoicePreset.NORMAL -> R.string.fx_preset_normal
+        VoicePreset.CLEAN -> R.string.fx_preset_clean
+        VoicePreset.BASS -> R.string.fx_preset_bass
+        VoicePreset.ECHO -> R.string.fx_preset_echo
+        VoicePreset.REVERB -> R.string.fx_preset_reverb
+        VoicePreset.ALIEN -> R.string.fx_preset_alien
+        VoicePreset.ROBOT -> R.string.fx_preset_robot
+        VoicePreset.CHIPMUNK -> R.string.fx_preset_chipmunk
+    }
+
     private fun openPanel() {
+        wakeBubble()
         val recording = RecorderState.isRecording
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -533,6 +785,48 @@ class FloatingBubbleService : Service() {
         root.addView(header)
 
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+
+        // Status FX dibuat eksplisit agar pengguna tahu apakah perubahan
+        // preset sedang live atau perangkat jatuh ke mic standar.
+        val currentPreset = VoicePreset.fromId(Prefs.voicePreset)
+        val fxStatus = label(
+            when {
+                recording && RecorderState.fxLive -> getString(
+                    R.string.fx_live_format,
+                    getString(voicePresetLabelRes(currentPreset)),
+                    Prefs.fxIntensity,
+                    Prefs.micVolume
+                )
+                recording -> getString(R.string.fx_applies_next)
+                else -> getString(
+                    R.string.fx_ready_format,
+                    getString(voicePresetLabelRes(currentPreset)),
+                    Prefs.fxIntensity,
+                    Prefs.micVolume
+                )
+            },
+            11.5f,
+            if (recording && RecorderState.fxLive) R.color.accent_green else R.color.ink_soft
+        ).apply {
+            background = GradientDrawable().apply {
+                cornerRadius = dp(999).toFloat()
+                setColor(
+                    color(
+                        if (recording && RecorderState.fxLive) {
+                            R.color.accent_green_tint
+                        } else {
+                            R.color.bg_soft
+                        }
+                    )
+                )
+            }
+            setPadding(dp(10), dp(5), dp(10), dp(5))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp(10) }
+        }
+        body.addView(fxStatus)
 
         // --- aksi utama ---
         val actions = LinearLayout(this).apply {
@@ -597,15 +891,23 @@ class FloatingBubbleService : Service() {
                 toast(R.string.overlay_needed)
             }
         }
+        if (recording) {
+            roundAction(actions2, R.drawable.ic_grid, getString(R.string.open_app),
+                color(R.color.bg_soft), color(R.color.ink)) {
+                openActivity(Intent(this, MainActivity::class.java))
+            }
+        } else {
+            roundAction(actions2, R.drawable.ic_gallery, getString(R.string.gallery),
+                color(R.color.accent_green_tint), color(R.color.accent_green)) {
+                openActivity(Intent(this, GalleryActivity::class.java))
+            }
+        }
+        roundAction(actions2, R.drawable.ic_sliders, getString(R.string.settings),
+            color(R.color.accent_slate_tint), color(R.color.accent_slate)) {
+            openActivity(Intent(this, SettingsActivity::class.java))
+        }
         roundAction(actions2, R.drawable.ic_wave, getString(R.string.hide_bubble),
             color(R.color.bg_soft), color(R.color.ink)) { stopSelf() }
-        // Dua slot kosong agar lebar kolom konsisten.
-        repeat(2) {
-            actions2.addView(
-                View(this),
-                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            )
-        }
         body.addView(actions2)
 
         // --- pembagi ---
@@ -655,8 +957,7 @@ class FloatingBubbleService : Service() {
                 setPadding(px, py, px, py)
                 isClickable = true
                 setOnClickListener {
-                    Prefs.voicePreset = preset.id
-                    VoiceFxState.preset = preset
+                    VoiceFxState.applyPreset(preset)
                     refreshChips()
                     if (RecorderState.isRecording && !RecorderState.fxLive) {
                         toast(R.string.fx_applies_next)
@@ -680,13 +981,11 @@ class FloatingBubbleService : Service() {
 
         addDeckSlider(body, getString(R.string.fx_intensity), 0, 100, Prefs.fxIntensity,
             format = { getString(R.string.mic_volume_format, it) }) { v ->
-            Prefs.fxIntensity = v
-            VoiceFxState.intensity = v / 100f
+            VoiceFxState.applyIntensityPercent(v)
         }
         addDeckSlider(body, getString(R.string.mic_volume), 10, 200, Prefs.micVolume,
             format = { getString(R.string.mic_volume_format, it) }) { v ->
-            Prefs.micVolume = v
-            VoiceFxState.micGain = v / 100f
+            VoiceFxState.applyMicVolumePercent(v)
         }
         val am = getSystemService(AUDIO_SERVICE) as AudioManager
         val maxVol = try {
@@ -735,12 +1034,13 @@ class FloatingBubbleService : Service() {
             LinearLayout.LayoutParams.MATCH_PARENT, scrollH
         )
         val bp = bubbleParams
-        val bubbleCx = (bp?.x ?: 0) + dp(19)
+        val bubbleLeft = bp?.x ?: 0
+        val bubbleCx = bubbleLeft + bubbleSizePx / 2
         val panelX = if (bubbleCx < display.width / 2) {
-            dp(8)
+            bubbleLeft + bubbleSizePx + dp(6)
         } else {
-            display.width - panelW - dp(8)
-        }
+            bubbleLeft - panelW - dp(6)
+        }.coerceIn(dp(6), (display.width - panelW - dp(6)).coerceAtLeast(dp(6)))
         val wantY = (bp?.y ?: dp(120)) - dp(30)
         val panelY = wantY.coerceIn(minY(), (display.height - panelH - dp(10)).coerceAtLeast(minY()))
         val lp = OverlayUtil.params(
@@ -753,6 +1053,9 @@ class FloatingBubbleService : Service() {
             root.alpha = 0f
             root.scaleX = 0.92f
             root.scaleY = 0.92f
+            root.pivotX = if (bubbleCx < display.width / 2) 0f else panelW.toFloat()
+            root.pivotY = ((bp?.y ?: panelY) + bubbleSizePx / 2 - panelY)
+                .coerceIn(0, panelH).toFloat()
             root.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(160).start()
         } catch (e: Exception) {
         }

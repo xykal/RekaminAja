@@ -1,5 +1,6 @@
 package id.rekaminaja.app.recorder
 
+import id.rekaminaja.app.data.Prefs
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan
@@ -44,10 +45,77 @@ object VoiceFxState {
     @Volatile
     var micGain: Float = 1f
 
+    @Volatile
+    var podcastGate: Boolean = false
+
+    @Volatile
+    var podcastCompressor: Boolean = false
+
+    @Volatile
+    var makeupDb: Int = 3
+
+    /** Naik setiap ada perubahan yang perlu diperhatikan thread audio. */
+    @Volatile
+    var revision: Long = 0L
+        private set
+
     fun sync(presetId: String, intensityPercent: Int, micVolumePercent: Int) {
-        preset = VoicePreset.fromId(presetId)
-        intensity = (intensityPercent.coerceIn(0, 100)) / 100f
-        micGain = (micVolumePercent.coerceIn(10, 200)) / 100f
+        val newPreset = VoicePreset.fromId(presetId)
+        val newIntensity = (intensityPercent.coerceIn(0, 100)) / 100f
+        val newGain = (micVolumePercent.coerceIn(10, 200)) / 100f
+        if (preset != newPreset || intensity != newIntensity || micGain != newGain) {
+            preset = newPreset
+            intensity = newIntensity
+            micGain = newGain
+            revision++
+        }
+    }
+
+    fun syncFromPrefs() {
+        sync(Prefs.voicePreset, Prefs.fxIntensity, Prefs.micVolume)
+        syncPodcastFromPrefs()
+    }
+
+    fun syncPodcastFromPrefs() {
+        val gate = Prefs.fxGate
+        val comp = Prefs.fxCompressor
+        val gain = Prefs.fxGainDb.coerceIn(0, 12)
+        if (podcastGate != gate || podcastCompressor != comp || makeupDb != gain) {
+            podcastGate = gate
+            podcastCompressor = comp
+            makeupDb = gain
+            revision++
+        }
+    }
+
+    fun applyPreset(newPreset: VoicePreset) {
+        Prefs.voicePreset = newPreset.id
+        if (preset != newPreset) {
+            preset = newPreset
+            revision++
+        }
+    }
+
+    fun applyPresetId(presetId: String) = applyPreset(VoicePreset.fromId(presetId))
+
+    fun applyIntensityPercent(percent: Int) {
+        val safe = percent.coerceIn(0, 100)
+        Prefs.fxIntensity = safe
+        val value = safe / 100f
+        if (intensity != value) {
+            intensity = value
+            revision++
+        }
+    }
+
+    fun applyMicVolumePercent(percent: Int) {
+        val safe = percent.coerceIn(10, 200)
+        Prefs.micVolume = safe
+        val value = safe / 100f
+        if (micGain != value) {
+            micGain = value
+            revision++
+        }
     }
 }
 
@@ -61,11 +129,17 @@ object VoiceFxState {
  */
 class MicDsp(
     private val sampleRate: Int,
-    private val gateEnabled: Boolean,
-    private val compressorEnabled: Boolean,
+    gateEnabled: Boolean,
+    compressorEnabled: Boolean,
     makeupDb: Int
 ) {
-    private val makeupLinear: Float = 10.0.pow(makeupDb / 20.0).toFloat()
+    init {
+        // Nilai konstruktor adalah snapshot awal. Setelah itu VoiceFxState
+        // menjadi satu-satunya sumber nilai live untuk semua permukaan UI.
+        VoiceFxState.podcastGate = gateEnabled
+        VoiceFxState.podcastCompressor = compressorEnabled
+        VoiceFxState.makeupDb = makeupDb.coerceIn(0, 12)
+    }
 
     private inner class Biquad(private val b0: Float, private val b1: Float, private val b2: Float,
                                private val a1: Float, private val a2: Float) {
@@ -75,6 +149,9 @@ class MicDsp(
             val y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
             x2 = x1; x1 = x; y2 = y1; y1 = y
             return y
+        }
+        fun reset() {
+            x1 = 0f; x2 = 0f; y1 = 0f; y2 = 0f
         }
     }
 
@@ -142,10 +219,46 @@ class MicDsp(
     }
 
     private var envelope = 0f
+    private var postEnvelope = 0f
     private var noiseFloor = 0.004f
     private var gateGain = 1f
+    private var gateHoldSamples = 0
     private var compGain = 1f
     private var ringPhase = 0.0
+
+    // Transisi live dibuat halus agar mengganti preset/volume tidak berbunyi
+    // klik, melonjak, atau membawa ekor efek lama ke preset berikutnya.
+    private var activePreset: VoicePreset = VoiceFxState.preset
+    private var smoothedGain: Float = VoiceFxState.micGain
+    private var smoothedIntensity: Float = VoiceFxState.intensity
+    private var transitionMix = 1f
+    private val frameIn = FloatArray(2)
+    private val frameOut = FloatArray(2)
+
+    private fun resetChannel(ch: Channel) {
+        ch.hpPrevIn = 0f
+        ch.hpPrevOut = 0f
+        ch.shelf.reset()
+        ch.presence.reset()
+        ch.echoBuf?.fill(0f)
+        ch.echoIdx = 0
+        ch.combBufs?.forEach { it.fill(0f) }
+        ch.combIdx?.fill(0)
+        ch.combDamp?.fill(0f)
+        ch.apBufs?.forEach { it.fill(0f) }
+        ch.apIdx?.fill(0)
+        ch.pitchBuf?.fill(0f)
+        ch.pitchWrite = 0
+        ch.pitchPhase = 0f
+    }
+
+    private fun resetForPresetSwitch() {
+        channelsState.forEach(::resetChannel)
+        ringPhase = 0.0
+        transitionMix = 0f
+    }
+
+    private fun dbToLinear(db: Int): Float = 10.0.pow(db.coerceIn(0, 12) / 20.0).toFloat()
 
     private fun echoProcess(ch: Channel, x: Float, wet: Float): Float {
         val size = (sampleRate * 0.17f).toInt().coerceAtLeast(1)
@@ -156,9 +269,10 @@ class MicDsp(
             ch.echoIdx = 0
         }
         val delayed = buf[ch.echoIdx]
-        buf[ch.echoIdx] = x + delayed * 0.34f
+        val feedback = 0.20f + 0.42f * wet.coerceIn(0f, 1f)
+        buf[ch.echoIdx] = x + delayed * feedback
         ch.echoIdx = (ch.echoIdx + 1) % size
-        return x * (1f - wet * 0.4f) + delayed * wet
+        return x * (1f - wet * 0.22f) + delayed * wet
     }
 
     private fun reverbProcess(ch: Channel, x: Float, wet: Float): Float {
@@ -199,7 +313,7 @@ class MicDsp(
             aIdx[i] = (idx + 1) % buf.size
             acc = out
         }
-        return x * (1f - wet) + acc * wet * 1.4f
+        return x * (1f - wet * 0.45f) + acc * wet * 1.15f
     }
 
     /** Pitch shifter ranah-waktu dua tap (crossfade) untuk efek cempreng. */
@@ -248,33 +362,74 @@ class MicDsp(
         if (frameBytes <= 0) return
 
         val preset = VoiceFxState.preset
-        val inten = VoiceFxState.intensity.coerceIn(0f, 1f)
-        val inGain = VoiceFxState.micGain
-        val useHp = preset != VoicePreset.NORMAL || gateEnabled || compressorEnabled
-        val useGate = gateEnabled || preset == VoicePreset.CLEAN || preset == VoicePreset.BASS
-        val useComp = compressorEnabled || preset == VoicePreset.CLEAN || preset == VoicePreset.BASS
-        val compMakeup = when (preset) {
-            VoicePreset.CLEAN -> makeupLinear * (1f + 0.6f * inten)
-            VoicePreset.BASS -> makeupLinear * (1f + 0.4f * inten)
-            else -> if (compressorEnabled) makeupLinear else 1f
+        if (preset != activePreset) {
+            activePreset = preset
+            resetForPresetSwitch()
+        }
+        val targetIntensity = VoiceFxState.intensity.coerceIn(0f, 1f)
+        val targetGain = VoiceFxState.micGain.coerceIn(0.1f, 2f)
+        val podcastGate = VoiceFxState.podcastGate
+        val podcastCompressor = VoiceFxState.podcastCompressor
+
+        // Normal + volume 100% + podcast mati adalah bypass byte-per-byte.
+        // Ini penting: memilih Normal sekarang benar-benar berarti mentah,
+        // bukan diam-diam melewati EQ/gate/kompresor sisa preset lain.
+        if (preset == VoicePreset.NORMAL && !podcastGate && !podcastCompressor &&
+            targetGain == 1f && smoothedGain == 1f && transitionMix >= 1f
+        ) {
+            return
+        }
+
+        val useHp = preset != VoicePreset.NORMAL || podcastGate || podcastCompressor
+        val useGate = podcastGate || preset == VoicePreset.CLEAN || preset == VoicePreset.BASS
+        val useComp = podcastCompressor || preset == VoicePreset.CLEAN || preset == VoicePreset.BASS
+        val makeupLinear = dbToLinear(VoiceFxState.makeupDb)
+        val compMakeup = when {
+            podcastCompressor -> makeupLinear
+            preset == VoicePreset.CLEAN -> 1.12f
+            preset == VoicePreset.BASS -> 1.06f
+            else -> 1f
+        }
+        val presetTrim = when (preset) {
+            VoicePreset.CLEAN -> 0.96f
+            VoicePreset.BASS -> 0.92f
+            VoicePreset.ECHO -> 0.94f
+            VoicePreset.REVERB -> 0.90f
+            VoicePreset.ALIEN -> 1.08f
+            VoicePreset.ROBOT -> 1.05f
+            VoicePreset.CHIPMUNK -> 0.98f
+            VoicePreset.NORMAL -> 1f
         }
         val ringFreq = when (preset) {
             VoicePreset.ALIEN -> 28.0
-            VoicePreset.ROBOT -> 52.0
+            VoicePreset.ROBOT -> 46.0
             else -> 0.0
         }
         val ringInc = if (ringFreq > 0) 2.0 * PI * ringFreq / sampleRate else 0.0
-        val pitchRatio = 1.25f + 0.55f * inten
+        val transitionStep = 1f / (sampleRate * 0.035f).coerceAtLeast(1f)
 
-        val scratch = FloatArray(max(2, channels))
         var i = 0
         while (i + frameBytes <= length) {
+            // Ramping per sampel: perubahan UI tidak menimbulkan klik dan
+            // intensitas 0 sekarang benar-benar kering untuk efek karakter.
+            smoothedGain += (targetGain - smoothedGain) * 0.0018f
+            if (abs(targetGain - smoothedGain) < 0.0005f) smoothedGain = targetGain
+            smoothedIntensity += (targetIntensity - smoothedIntensity) * 0.0025f
+            if (abs(targetIntensity - smoothedIntensity) < 0.0005f) {
+                smoothedIntensity = targetIntensity
+            }
+            if (transitionMix < 1f) {
+                transitionMix = (transitionMix + transitionStep).coerceAtMost(1f)
+            }
+            val inten = (smoothedIntensity * transitionMix).coerceIn(0f, 1f)
+            val pitchRatio = 1.10f + 0.65f * inten
+
             // --- baca + volume mic + high-pass per kanal ---
             var peak = 0f
             for (chIdx in 0 until channels) {
                 val idx = i + chIdx * 2
                 var y = (((data[idx].toInt() and 0xFF) or (data[idx + 1].toInt() shl 8))
-                    .toShort().toInt() / 32768f) * inGain
+                    .toShort().toInt() / 32768f) * smoothedGain
                 if (useHp) {
                     val st = channelsState[minOf(chIdx, 1)]
                     val hp = hpAlpha * (st.hpPrevOut + y - st.hpPrevIn)
@@ -282,7 +437,7 @@ class MicDsp(
                     st.hpPrevOut = hp
                     y = hp
                 }
-                scratch[chIdx] = y
+                frameIn[minOf(chIdx, 1)] = y
                 if (abs(y) > peak) peak = abs(y)
             }
 
@@ -293,29 +448,28 @@ class MicDsp(
                 envelope * 0.9995f
             }
 
-            // --- noise gate adaptif ---
+            // --- noise gate adaptif + hold agar ujung kata tidak terpotong ---
             var frameGain = 1f
             if (useGate) {
-                if (envelope < 0.02f) {
-                    noiseFloor = noiseFloor * 0.998f + envelope * 0.002f
+                if (envelope < 0.015f) {
+                    noiseFloor = noiseFloor * 0.9985f + envelope * 0.0015f
                 }
-                val threshold = max(0.008f, noiseFloor * 3f)
-                val ratioEnv = envelope / threshold
-                val target = ((ratioEnv - 0.7f) / 0.6f).coerceIn(0f, 1f)
-                gateGain += (target - gateGain) * if (target > gateGain) 0.03f else 0.004f
-                frameGain *= gateGain
-            }
-
-            // --- kompresor ---
-            if (useComp) {
-                val thr = 0.25f
-                val targetGain = if (envelope > thr) {
-                    (thr + (envelope - thr) / 3f) / envelope.coerceAtLeast(1e-6f)
-                } else {
+                val threshold = max(0.0045f, noiseFloor * 2.8f)
+                if (envelope > threshold) {
+                    gateHoldSamples = (sampleRate * 0.14f).toInt()
+                } else if (gateHoldSamples > 0) {
+                    gateHoldSamples--
+                }
+                val target = if (gateHoldSamples > 0) {
                     1f
+                } else {
+                    ((envelope / threshold - 0.55f) / 0.5f).coerceIn(0f, 1f)
                 }
-                compGain += (targetGain - compGain) * if (targetGain < compGain) 0.02f else 0.002f
-                frameGain *= compGain * compMakeup
+                gateGain += (target - gateGain) * if (target > gateGain) 0.025f else 0.00045f
+                frameGain *= gateGain
+            } else {
+                gateGain = 1f
+                gateHoldSamples = 0
             }
 
             // --- modulasi cincin (alien/robot), fase dibagi antar kanal ---
@@ -323,43 +477,76 @@ class MicDsp(
             if (ringInc > 0.0) {
                 ringPhase += ringInc
                 if (ringPhase > 2.0 * PI) ringPhase -= 2.0 * PI
-                val s = sin(ringPhase).toFloat()
-                ringMod = if (preset == VoicePreset.ROBOT) sign(s) * 0.85f else s
+                ringMod = sin(ringPhase).toFloat()
             }
 
-            // --- EQ + karakter preset + limiter per kanal ---
+            // --- EQ + karakter preset per kanal ---
+            var postPeak = 0f
             for (chIdx in 0 until channels) {
-                val st = channelsState[minOf(chIdx, 1)]
-                var y = scratch[chIdx] * frameGain
+                val stateIdx = minOf(chIdx, 1)
+                val st = channelsState[stateIdx]
+                var y = frameIn[stateIdx] * frameGain
                 when (preset) {
                     VoicePreset.CLEAN -> {
-                        y = st.presence.process(y)
+                        val wetY = st.presence.process(y)
+                        y = y * (1f - inten) + wetY * inten
                     }
                     VoicePreset.BASS -> {
-                        y = st.shelf.process(y)
-                        val drive = 1.0 + 2.2 * inten
-                        y = (atan(drive * y) / atan(drive * 0.8)).toFloat() * 0.85f
+                        val dry = y
+                        var wetY = st.shelf.process(y)
+                        val drive = 1.0 + 1.5 * inten
+                        wetY = (atan(drive * wetY) / atan(drive * 0.75)).toFloat() * 0.82f
+                        y = dry * (1f - inten) + wetY * inten
                     }
-                    VoicePreset.ECHO -> y = echoProcess(st, y, 0.08f + 0.4f * inten)
-                    VoicePreset.REVERB -> y = reverbProcess(st, y, 0.1f + 0.42f * inten)
+                    VoicePreset.ECHO -> y = echoProcess(st, y, 0.48f * inten)
+                    VoicePreset.REVERB -> y = reverbProcess(st, y, 0.52f * inten)
                     VoicePreset.ALIEN -> {
-                        val wet = 0.25f + 0.65f * inten
-                        y = y * (1f - wet) + (y * ringMod * 1.5f) * wet
+                        val wet = 0.88f * inten
+                        y = y * (1f - wet) + (y * ringMod * 1.45f) * wet
                     }
                     VoicePreset.ROBOT -> {
-                        val wet = 0.3f + 0.6f * inten
-                        y = y * (1f - wet) + (y * ringMod * 1.3f) * wet
+                        val wet = 0.88f * inten
+                        y = y * (1f - wet) + (y * ringMod * 1.25f) * wet
                     }
                     VoicePreset.CHIPMUNK -> {
-                        val wet = 0.45f + 0.55f * inten
-                        y = y * (1f - wet) + pitchProcess(st, y, pitchRatio) * wet
+                        // Untuk pitch, intensitas mengatur tinggi nada. Dry
+                        // tidak dicampur agar tidak terdengar chorus/phasing.
+                        if (inten >= 0.04f) y = pitchProcess(st, y, pitchRatio)
                     }
                     VoicePreset.NORMAL -> Unit
                 }
-                // Soft limiter.
+                y *= presetTrim
+                frameOut[stateIdx] = y
+                if (abs(y) > postPeak) postPeak = abs(y)
+            }
+
+            // --- kompresor setelah karakter: level antar-preset lebih rata ---
+            postEnvelope = if (postPeak > postEnvelope) {
+                postEnvelope + (postPeak - postEnvelope) * 0.35f
+            } else {
+                postEnvelope * 0.9997f
+            }
+            var outputGain = 1f
+            if (useComp) {
+                val thr = 0.25f
+                val targetCompGain = if (postEnvelope > thr) {
+                    (thr + (postEnvelope - thr) / 3f) / postEnvelope.coerceAtLeast(1e-6f)
+                } else {
+                    1f
+                }
+                compGain += (targetCompGain - compGain) *
+                    if (targetCompGain < compGain) 0.003f else 0.0003f
+                outputGain = compGain * compMakeup
+            } else {
+                compGain = 1f
+            }
+
+            // --- limiter + tulis PCM ---
+            for (chIdx in 0 until channels) {
+                var y = frameOut[minOf(chIdx, 1)] * outputGain
                 val a = abs(y)
                 if (a > 0.89f) {
-                    y = sign(y) * (0.89f + (a - 0.89f) * 0.2f).coerceAtMost(0.98f)
+                    y = sign(y) * (0.89f + (a - 0.89f) * 0.18f).coerceAtMost(0.98f)
                 }
                 val v = (y * 32767f).toInt().coerceIn(-32768, 32767)
                 val idx = i + chIdx * 2

@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.4.0 — 2026-10-26
+
+### Baru
+- **Voice FX 2.0 yang konsisten**: Mikrofon dan Internal + Mikrofon kini selalu melewati jalur mic live yang sama, termasuk saat mulai dari preset Normal. Preset, intensitas, volume mic, gate, kompresor, dan makeup gain dibaca dari satu state terpadu sehingga Settings, bola melayang, dan notifikasi tidak lagi saling berbeda
+- **Transisi efek bebas klik**: preset dan gain diramping per sampel, buffer echo/reverb/pitch dibersihkan saat preset berganti, intensitas 0 benar-benar kering, dan Normal pada 100% tanpa podcast FX menjadi bypass mentah
+- **Level antar-preset lebih rata**: gate mendapat hold 140 ms agar ujung kata tidak terpotong, sedangkan kompresor dan limiter kini bekerja setelah karakter preset
+- **Bola melayang gaya XRecorder**: bola menempel di tepi, lalu setengahnya menyelip keluar layar saat idle; ketuk bagian yang terlihat untuk mengembangkannya, tekan-tahan untuk mulai/stop cepat
+- **Chip waktu rekaman terpisah** di samping bola, lebih terbaca daripada timer mungil di dalam bola
+- **Kustomisasi bola melayang**: ukuran 34-56dp, opasitas 35-100%, perilaku selip ke tepi, chip waktu, dan mode sembunyikan saat merekam
+
+### Perbaikan
+- Panel bola kini membuka menempel pada posisi bola, menampilkan status apakah Voice FX benar-benar live, dan menyediakan akses cepat ke Galeri, Pengaturan, Gambar, dan Sembunyikan
+- Ringkasan dan tile Audio Lab di layar utama kini ikut memperhitungkan preset suara serta volume mic, bukan hanya efek podcast lama
+
 ## 1.3.0 — 2026-10-26
 
 ### Baru

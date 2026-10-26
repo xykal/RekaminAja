@@ -273,18 +273,25 @@ class ScreenRecordService : Service() {
             activeAudioSource = audio
             // Sinkronkan Deck Efek Suara sebelum engine dibuat. MicDsp membaca
             // VoiceFxState agar preset/volume bisa diganti live dari floating.
-            VoiceFxState.sync(Prefs.voicePreset, Prefs.fxIntensity, Prefs.micVolume)
+            VoiceFxState.syncFromPrefs()
             val wantInternal = audio == Prefs.AUDIO_INTERNAL || audio == Prefs.AUDIO_MIX
-            // Mic dengan preset/volume/efek aktif wajib lewat jalur codec (PCM
-            // bisa diproses). Normal + 100% + semua efek mati tetap MediaRecorder.
-            val wantMic = audio == Prefs.AUDIO_MIX || audio == Prefs.AUDIO_MIC
-            val wantMicCodec = audio == Prefs.AUDIO_MIC && Prefs.micFxActive
+            val internalSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+            if (wantInternal && !internalSupported) {
+                toast(R.string.internal_audio_needs_android10)
+            }
+            // v1.4: semua mode yang mengandung mic memakai jalur codec yang
+            // sama, termasuk Normal 100%. Dulu Normal mulai dari
+            // MediaRecorder, sehingga preset yang dipilih di tengah rekaman
+            // kadang live dan kadang baru berlaku rekaman berikutnya.
+            val wantMic = audio == Prefs.AUDIO_MIX || audio == Prefs.AUDIO_MIC ||
+                (wantInternal && !internalSupported)
+            val useCodec = (wantInternal && internalSupported) || wantMic
             var eng: RecorderEngine
             var surface: android.view.Surface
-            if ((wantInternal && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) || wantMicCodec) {
+            if (useCodec) {
                 val codecEngine = CodecRecorderEngine(
                     proj, file, capture.width, capture.height, fps, bitrate,
-                    includeInternal = wantInternal,
+                    includeInternal = wantInternal && internalSupported,
                     includeMic = wantMic,
                     fxNoiseSystem = Prefs.fxNoiseSystem,
                     // Selalu pasang DSP bila ada mic di jalur codec, supaya
@@ -307,23 +314,22 @@ class ScreenRecordService : Service() {
                     } catch (ignored: Exception) {
                     }
                     toast(
-                        if (wantInternal) R.string.internal_audio_fallback
-                        else R.string.fx_fallback
+                        if (wantMic) R.string.voice_fx_fallback
+                        else R.string.internal_audio_fallback
                     )
                     val fallback = MediaRecorderEngine(
                         this, file, capture.width, capture.height, fps, bitrate,
-                        useMic = audio == Prefs.AUDIO_MIX || audio == Prefs.AUDIO_MIC,
+                        useMic = wantMic,
                         videoMime = plan.mime
                     )
                     surface = fallback.start()
                     eng = fallback
                 }
             } else {
-                if (wantInternal) toast(R.string.internal_audio_needs_android10)
+                // Hanya mode tanpa suara yang sampai ke jalur sederhana ini.
                 val mr = MediaRecorderEngine(
                     this, file, capture.width, capture.height, fps, bitrate,
-                    // Internal di Android <10 -> fallback mic.
-                    useMic = audio != Prefs.AUDIO_NONE,
+                    useMic = false,
                     videoMime = plan.mime
                 )
                 surface = mr.start()
@@ -518,8 +524,7 @@ class ScreenRecordService : Service() {
 
     /** Volume mic dari tombol notifikasi: tersimpan + berlaku live via DSP. */
     private fun adjustMicVolume(deltaPercent: Int) {
-        Prefs.micVolume = Prefs.micVolume + deltaPercent
-        VoiceFxState.micGain = Prefs.micVolume / 100f
+        VoiceFxState.applyMicVolumePercent(Prefs.micVolume + deltaPercent)
         if (RecorderState.isRecording) {
             updateNotification()
         } else if (RecorderState.state != RecorderState.State.COUNTDOWN) {

@@ -102,7 +102,7 @@
     <string name="audio_note_old">Note: internal audio needs Android 10+. On this device it falls back to microphone.</string>
     <string name="recording_section">Recording</string>
     <string name="countdown">Countdown before recording</string>
-    <string name="floating_bubble">Show floating ball while recording</string>
+    <string name="floating_bubble">Enable floating ball</string>
     <string name="overlay_section">Facecam &amp; overlays</string>
     <string name="facecam_default">Facecam on by default</string>
     <string name="front_camera">Use front camera</string>
@@ -138,7 +138,7 @@
     <string name="fx_intro">Make your voice sound like a podcast mic. Everything is off by default — pick a preset or tune it yourself.</string>
     <string name="fx_noise_system">System noise reduction</string>
     <string name="fx_noise_system_desc">Uses your device noise suppressor, echo canceller and auto gain when available</string>
-    <string name="fx_note_route">Applies to Mic and Internal + Mic recordings. When FX is on, the mic runs through the codec path so the audio can be processed; if that path is unavailable, the standard microphone is used automatically.</string>
+    <string name="fx_note_route">Mic and Internal + Mic now always use the same live mic path, so preset, intensity, and mic volume stay consistent and can be changed during recording. If a device rejects that path, RekaminAja falls back to the standard raw microphone and the floating deck shows that effects apply next time.</string>
     <string name="podcast_fx">Podcast FX</string>
     <string name="preset_natural">Natural</string>
     <string name="preset_off">Off</string>
@@ -224,4 +224,17 @@
     <string name="auto_stop_min_format">%1$d minutes</string>
     <string name="hide_bubble_recording">Hide bubble while recording</string>
     <string name="hide_bubble_recording_desc">Produces a clean video without the floating bubble. Control the recording from the notification while it is hidden.</string>
+
+    <!-- v1.4.0 Voice FX consistency + XRecorder-style floating ball -->
+    <string name="voice_fx_fallback">The live mic path is unavailable on this device. Recording with the standard raw microphone.</string>
+    <string name="fx_live_format">Live FX: %1$s - intensity %2$d%% - mic %3$d%%</string>
+    <string name="fx_ready_format">Voice ready: %1$s - intensity %2$d%% - mic %3$d%%</string>
+    <string name="bubble_customize">Customize floating ball</string>
+    <string name="bubble_edge_tuck">Tuck into screen edge</string>
+    <string name="bubble_edge_tuck_desc">After a few seconds idle, half of the ball slides off-screen like a side tab. Tap the visible half to expand it.</string>
+    <string name="bubble_size">Floating ball size</string>
+    <string name="bubble_opacity">Floating ball opacity</string>
+    <string name="bubble_show_timer">Show recording time chip</string>
+    <string name="bubble_show_timer_desc">Shows an elapsed-time pill beside the ball while recording</string>
+    <string name="bubble_customize_note">Tap opens the toolbox. Long-press the ball to quickly start or stop recording. Drag it to either edge, or to the bottom remove circle to hide it.</string>
 </resources>

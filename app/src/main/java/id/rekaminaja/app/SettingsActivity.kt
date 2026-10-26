@@ -15,6 +15,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import id.rekaminaja.app.data.Prefs
 import id.rekaminaja.app.recorder.CaptureCapabilities
+import id.rekaminaja.app.recorder.VoiceFxState
+import id.rekaminaja.app.recorder.VoicePreset
 import id.rekaminaja.app.ui.RekChoiceView
 import id.rekaminaja.app.ui.RekDialogs
 import id.rekaminaja.app.ui.RekPillButton
@@ -149,16 +151,19 @@ class SettingsActivity : AppCompatActivity() {
         tNs = addToggle(lab, R.string.fx_noise_system, R.string.fx_noise_system_desc,
             Prefs.fxNoiseSystem) {
             Prefs.fxNoiseSystem = it
+            VoiceFxState.syncPodcastFromPrefs()
             refreshPresets(currentPresetIndex())
         }
         tGate = addToggle(lab, R.string.fx_gate, R.string.fx_gate_desc,
             Prefs.fxGate) {
             Prefs.fxGate = it
+            VoiceFxState.syncPodcastFromPrefs()
             refreshPresets(currentPresetIndex())
         }
         tComp = addToggle(lab, R.string.fx_compressor, R.string.fx_compressor_desc,
             Prefs.fxCompressor) {
             Prefs.fxCompressor = it
+            VoiceFxState.syncPodcastFromPrefs()
             refreshPresets(currentPresetIndex())
         }
         val gainViews = addSlider(
@@ -166,6 +171,7 @@ class SettingsActivity : AppCompatActivity() {
             format = { getString(R.string.fx_gain_format, it) }
         ) {
             Prefs.fxGainDb = it
+            VoiceFxState.syncPodcastFromPrefs()
             refreshPresets(currentPresetIndex())
         }
         gainSlider = gainViews.first
@@ -190,20 +196,16 @@ class SettingsActivity : AppCompatActivity() {
             ),
             voicePresetIds.indexOf(Prefs.voicePreset).coerceAtLeast(0)
         ) {
-            Prefs.voicePreset = voicePresetIds[it]
-            id.rekaminaja.app.recorder.VoiceFxState.preset =
-                id.rekaminaja.app.recorder.VoicePreset.fromId(voicePresetIds[it])
+            VoiceFxState.applyPreset(VoicePreset.fromId(voicePresetIds[it]))
         }
         addNote(lab, R.string.voice_preset_desc)
         addSlider(lab, R.string.fx_intensity, 0, 100, Prefs.fxIntensity,
             format = { getString(R.string.mic_volume_format, it) }) {
-            Prefs.fxIntensity = it
-            id.rekaminaja.app.recorder.VoiceFxState.intensity = it / 100f
+            VoiceFxState.applyIntensityPercent(it)
         }
         addSlider(lab, R.string.mic_volume, 10, 200, Prefs.micVolume,
             format = { getString(R.string.mic_volume_format, it) }) {
-            Prefs.micVolume = it
-            id.rekaminaja.app.recorder.VoiceFxState.micGain = it / 100f
+            VoiceFxState.applyMicVolumePercent(it)
         }
         addNote(lab, R.string.fx_note_route)
 
@@ -215,13 +217,6 @@ class SettingsActivity : AppCompatActivity() {
             countdowns.map { "$it s" },
             countdowns.indexOf(Prefs.countdownSec).coerceAtLeast(0)
         ) { Prefs.countdownSec = countdowns[it] }
-        addToggle(rec, R.string.floating_bubble, null, Prefs.floatingBubble) {
-            Prefs.floatingBubble = it
-        }
-        addToggle(
-            rec, R.string.hide_bubble_recording, R.string.hide_bubble_recording_desc,
-            Prefs.hideBubbleWhileRecording
-        ) { Prefs.hideBubbleWhileRecording = it }
         val autoStops = intArrayOf(0, 1, 5, 10, 20, 30, 60)
         addChoice(
             rec, R.string.auto_stop,
@@ -231,6 +226,33 @@ class SettingsActivity : AppCompatActivity() {
             },
             autoStops.indexOf(Prefs.autoStopMinutes).coerceAtLeast(0)
         ) { Prefs.autoStopMinutes = autoStops[it] }
+
+        // ---- Bola melayang gaya XRecorder ----
+        val bubbleCard = section(R.string.bubble_customize)
+        addToggle(bubbleCard, R.string.floating_bubble, null, Prefs.floatingBubble) {
+            Prefs.floatingBubble = it
+        }
+        addToggle(
+            bubbleCard, R.string.bubble_edge_tuck, R.string.bubble_edge_tuck_desc,
+            Prefs.bubbleEdgeTuck
+        ) { Prefs.bubbleEdgeTuck = it }
+        addSlider(
+            bubbleCard, R.string.bubble_size, 34, 56, Prefs.bubbleSizeDp,
+            format = { "$it dp" }
+        ) { Prefs.bubbleSizeDp = it }
+        addSlider(
+            bubbleCard, R.string.bubble_opacity, 35, 100, Prefs.bubbleOpacityPercent,
+            format = { getString(R.string.mic_volume_format, it) }
+        ) { Prefs.bubbleOpacityPercent = it }
+        addToggle(
+            bubbleCard, R.string.bubble_show_timer, R.string.bubble_show_timer_desc,
+            Prefs.bubbleShowTimer
+        ) { Prefs.bubbleShowTimer = it }
+        addToggle(
+            bubbleCard, R.string.hide_bubble_recording, R.string.hide_bubble_recording_desc,
+            Prefs.hideBubbleWhileRecording
+        ) { Prefs.hideBubbleWhileRecording = it }
+        addNote(bubbleCard, R.string.bubble_customize_note)
 
         // ---- Facecam ----
         val face = section(R.string.overlay_section)
@@ -347,6 +369,7 @@ class SettingsActivity : AppCompatActivity() {
         Prefs.fxGate = gate
         Prefs.fxCompressor = comp
         Prefs.fxGainDb = gain
+        VoiceFxState.syncPodcastFromPrefs()
         tNs.setCheckedSilently(ns)
         tGate.setCheckedSilently(gate)
         tComp.setCheckedSilently(comp)
